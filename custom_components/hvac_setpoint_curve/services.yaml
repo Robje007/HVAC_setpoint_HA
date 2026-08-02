@@ -1,0 +1,33 @@
+set_curve:
+  name: Set curve
+  description: Update the shared visual heating/cooling outdoor-temperature setpoint curve for one config entry.
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Entry ID of the HVAC Setpoint Curve instance.
+      required: true
+      selector:
+        text:
+    mode:
+      name: Mode
+      description: Which curve to update. Use both for the shared custom curve.
+      required: true
+      selector:
+        select:
+          options:
+            - cooling
+            - heating
+            - both
+    points:
+      name: Curve points
+      description: List of objects with outdoor_temp and setpoint values.
+      required: true
+      example:
+        - outdoor_temp: 18
+          setpoint: 23
+        - outdoor_temp: 26
+          setpoint: 21
+        - outdoor_temp: 35
+          setpoint: 20
+      selector:
+        object:

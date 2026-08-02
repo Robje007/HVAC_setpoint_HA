@@ -1,0 +1,252 @@
+{
+  "title": "HVAC Setpoint Curve",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up HVAC Setpoint Curve",
+        "description": "Required: name plus one operating mode. Select only cooling, only heating, both, or sensor-only mode. Sensor-only mode only creates the setpoint and active-state sensors; it will not turn a climate entity on or off.",
+        "data": {
+          "name": "Name (required)",
+          "cooling_climate": "Cooling climate entity (optional)",
+          "heating_climate": "Heating climate entity (optional)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
+          "humidity_sensor": "Outdoor humidity sensor (optional)",
+          "sensor_only": "Sensor-only mode: create sensors only, do not control HVAC",
+          "turn_off_when_outdoor_unavailable": "Turn HVAC off when outdoor temperature is unavailable"
+        }
+      },
+      "preset": {
+        "title": "Starting curve",
+        "description": "A preset fills the curve points. Choose Start empty / custom to enter your own 3 to 6 points now.",
+        "data": {
+          "preset": "Preset"
+        }
+      },
+      "thresholds": {
+        "title": "Outdoor temperature hysteresis thresholds",
+        "data": {
+          "cooling_on_threshold": "Cooling turns on above outdoor temperature",
+          "cooling_off_threshold": "Cooling turns off below outdoor temperature",
+          "heating_on_threshold": "Heating turns on below outdoor temperature",
+          "heating_off_threshold": "Heating turns off above outdoor temperature"
+        }
+      },
+      "custom_cooling_curve": {
+        "title": "Create custom cooling curve",
+        "description": "Enter 3 to 6 points. Each point maps an outdoor temperature to the cooling target temperature.",
+        "data": {
+          "point_count": "Number of points",
+          "outdoor_temp_1": "Point 1 outdoor temperature",
+          "setpoint_1": "Point 1 cooling target",
+          "outdoor_temp_2": "Point 2 outdoor temperature",
+          "setpoint_2": "Point 2 cooling target",
+          "outdoor_temp_3": "Point 3 outdoor temperature",
+          "setpoint_3": "Point 3 cooling target",
+          "outdoor_temp_4": "Point 4 outdoor temperature",
+          "setpoint_4": "Point 4 cooling target",
+          "outdoor_temp_5": "Point 5 outdoor temperature",
+          "setpoint_5": "Point 5 cooling target",
+          "outdoor_temp_6": "Point 6 outdoor temperature",
+          "setpoint_6": "Point 6 cooling target"
+        }
+      },
+      "custom_heating_curve": {
+        "title": "Create custom heating curve",
+        "description": "Enter 3 to 6 points. Each point maps an outdoor temperature to the heating target temperature.",
+        "data": {
+          "point_count": "Number of points",
+          "outdoor_temp_1": "Point 1 outdoor temperature",
+          "setpoint_1": "Point 1 heating target",
+          "outdoor_temp_2": "Point 2 outdoor temperature",
+          "setpoint_2": "Point 2 heating target",
+          "outdoor_temp_3": "Point 3 outdoor temperature",
+          "setpoint_3": "Point 3 heating target",
+          "outdoor_temp_4": "Point 4 outdoor temperature",
+          "setpoint_4": "Point 4 heating target",
+          "outdoor_temp_5": "Point 5 outdoor temperature",
+          "setpoint_5": "Point 5 heating target",
+          "outdoor_temp_6": "Point 6 outdoor temperature",
+          "setpoint_6": "Point 6 heating target"
+        }
+      },
+      "custom_curve": {
+        "title": "Create custom heating/cooling curve",
+        "description": "Enter 3 to 6 points. This one curve is used for both heating and cooling.",
+        "data": {
+          "point_count": "Number of points",
+          "outdoor_temp_1": "Point 1 outdoor temperature",
+          "setpoint_1": "Point 1 target temperature",
+          "outdoor_temp_2": "Point 2 outdoor temperature",
+          "setpoint_2": "Point 2 target temperature",
+          "outdoor_temp_3": "Point 3 outdoor temperature",
+          "setpoint_3": "Point 3 target temperature",
+          "outdoor_temp_4": "Point 4 outdoor temperature",
+          "setpoint_4": "Point 4 target temperature",
+          "outdoor_temp_5": "Point 5 outdoor temperature",
+          "setpoint_5": "Point 5 target temperature",
+          "outdoor_temp_6": "Point 6 outdoor temperature",
+          "setpoint_6": "Point 6 target temperature"
+        }
+      }
+    },
+    "error": {
+      "missing_control_or_sensor_only": "Choose cooling, heating, or sensor-only mode. Sensor-only creates entities for automations but does not control HVAC.",
+      "invalid_curve": "Curve points must be complete and have unique outdoor temperatures.",
+      "unsupported_cooling_mode": "This climate entity does not support cooling mode.",
+      "unsupported_heating_mode": "This climate entity does not support heating mode.",
+      "invalid_cooling_hysteresis": "Cooling on temperature must be higher than cooling off temperature.",
+      "invalid_heating_hysteresis": "Heating off temperature must be higher than heating on temperature.",
+      "overlapping_heating_cooling": "Heating off temperature must be lower than cooling on temperature."
+    },
+    "abort": {
+      "already_configured": "This curve name is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HVAC curve settings",
+        "menu_options": {
+          "linked_entities": "Linked entities and sensors",
+          "preset": "Apply a built-in preset",
+          "custom_curve": "Create or edit custom heating/cooling curve",
+          "thresholds": "Heating and cooling trigger temperatures"
+        },
+        "menu_option_descriptions": {
+          "linked_entities": "Choose the climate entities and outdoor temperature and humidity sensors.",
+          "preset": "Replace the current curve with a built-in starting curve.",
+          "custom_curve": "Set one shared 3-6 point curve for both heating and cooling.",
+          "thresholds": "Choose when heating and cooling switch on and off based on outdoor temperature."
+        }
+      },
+      "linked_entities": {
+        "title": "Linked entities",
+        "description": "Cooling and heating are independent. You may configure only cooling, only heating, both, or sensor-only mode. Sensor-only mode creates the target setpoint and active-state sensors without sending commands to climate entities.",
+        "data": {
+          "cooling_climate": "Cooling climate entity (optional)",
+          "heating_climate": "Heating climate entity (optional)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
+          "humidity_sensor": "Outdoor humidity sensor (optional)",
+          "sensor_only": "Sensor-only mode: create sensors only, do not control HVAC",
+          "turn_off_when_outdoor_unavailable": "Turn HVAC off when outdoor temperature is unavailable"
+        }
+      },
+      "preset": {
+        "title": "Apply preset",
+        "description": "Applying a built-in preset overwrites the current curve. Choose Custom to open the curve editor.",
+        "data": {
+          "preset": "Curve preset"
+        }
+      },
+      "custom_curve": {
+        "title": "Custom heating/cooling curve",
+        "description": "Enter 3 to 6 points. This one curve is used for both heating and cooling.",
+        "data": {
+          "point_count": "Number of points",
+          "outdoor_temp_1": "Point 1 outdoor temperature",
+          "setpoint_1": "Point 1 target temperature",
+          "outdoor_temp_2": "Point 2 outdoor temperature",
+          "setpoint_2": "Point 2 target temperature",
+          "outdoor_temp_3": "Point 3 outdoor temperature",
+          "setpoint_3": "Point 3 target temperature",
+          "outdoor_temp_4": "Point 4 outdoor temperature",
+          "setpoint_4": "Point 4 target temperature",
+          "outdoor_temp_5": "Point 5 outdoor temperature",
+          "setpoint_5": "Point 5 target temperature",
+          "outdoor_temp_6": "Point 6 outdoor temperature",
+          "setpoint_6": "Point 6 target temperature"
+        }
+      },
+      "cooling_curve": {
+        "title": "Edit cooling curve",
+        "description": "Set 3 to 6 cooling curve points. Each point maps an outdoor temperature to a target temperature.",
+        "data": {
+          "point_count": "Number of points",
+          "outdoor_temp_1": "Point 1 outdoor temperature",
+          "setpoint_1": "Point 1 cooling target",
+          "outdoor_temp_2": "Point 2 outdoor temperature",
+          "setpoint_2": "Point 2 cooling target",
+          "outdoor_temp_3": "Point 3 outdoor temperature",
+          "setpoint_3": "Point 3 cooling target",
+          "outdoor_temp_4": "Point 4 outdoor temperature",
+          "setpoint_4": "Point 4 cooling target",
+          "outdoor_temp_5": "Point 5 outdoor temperature",
+          "setpoint_5": "Point 5 cooling target",
+          "outdoor_temp_6": "Point 6 outdoor temperature",
+          "setpoint_6": "Point 6 cooling target"
+        }
+      },
+      "heating_curve": {
+        "title": "Edit heating curve",
+        "description": "Set 3 to 6 heating curve points. Each point maps an outdoor temperature to a target temperature.",
+        "data": {
+          "point_count": "Number of points",
+          "outdoor_temp_1": "Point 1 outdoor temperature",
+          "setpoint_1": "Point 1 heating target",
+          "outdoor_temp_2": "Point 2 outdoor temperature",
+          "setpoint_2": "Point 2 heating target",
+          "outdoor_temp_3": "Point 3 outdoor temperature",
+          "setpoint_3": "Point 3 heating target",
+          "outdoor_temp_4": "Point 4 outdoor temperature",
+          "setpoint_4": "Point 4 heating target",
+          "outdoor_temp_5": "Point 5 outdoor temperature",
+          "setpoint_5": "Point 5 heating target",
+          "outdoor_temp_6": "Point 6 outdoor temperature",
+          "setpoint_6": "Point 6 heating target"
+        }
+      },
+      "thresholds": {
+        "title": "Outdoor temperature thresholds",
+        "data": {
+          "cooling_on_threshold": "Cooling turns on above outdoor temperature",
+          "cooling_off_threshold": "Cooling turns off below outdoor temperature",
+          "heating_on_threshold": "Heating turns on below outdoor temperature",
+          "heating_off_threshold": "Heating turns off above outdoor temperature"
+        }
+      }
+    },
+    "error": {
+      "missing_control_or_sensor_only": "Choose cooling, heating, or sensor-only mode. Sensor-only creates entities for automations but does not control HVAC.",
+      "invalid_curve": "Curve points must be complete and have unique outdoor temperatures.",
+      "unsupported_cooling_mode": "This climate entity does not support cooling mode.",
+      "unsupported_heating_mode": "This climate entity does not support heating mode.",
+      "invalid_cooling_hysteresis": "Cooling on temperature must be higher than cooling off temperature.",
+      "invalid_heating_hysteresis": "Heating off temperature must be higher than heating on temperature.",
+      "overlapping_heating_cooling": "Heating off temperature must be lower than cooling on temperature."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "target_setpoint": {
+        "name": "Target temperature from curve"
+      }
+    },
+    "binary_sensor": {
+      "cooling_active": {
+        "name": "Cooling active — on above {on_threshold} °C, off below {off_threshold} °C"
+      },
+      "heating_active": {
+        "name": "Heating active — on below {on_threshold} °C, off above {off_threshold} °C"
+      }
+    },
+    "number": {
+      "cooling_on_threshold": {
+        "name": "Cooling: switch on above"
+      },
+      "cooling_off_threshold": {
+        "name": "Cooling: switch off below"
+      },
+      "heating_on_threshold": {
+        "name": "Heating: switch on below"
+      },
+      "heating_off_threshold": {
+        "name": "Heating: switch off above"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Curve preset — edit Custom via Configure"
+      }
+    }
+  }
+}

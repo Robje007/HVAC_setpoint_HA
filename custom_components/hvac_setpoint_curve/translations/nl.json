@@ -1,0 +1,252 @@
+{
+  "title": "HVAC Setpoint Curve",
+  "config": {
+    "step": {
+      "user": {
+        "title": "HVAC Setpoint Curve instellen",
+        "description": "Verplicht: een naam en een bedieningsmodus. Kies alleen koelen, alleen verwarmen, beide, of alleen-sensor-modus. Alleen-sensor-modus maakt alleen de setpoint- en actief-sensoren aan; er wordt geen climate-entiteit aan- of uitgezet.",
+        "data": {
+          "name": "Naam (verplicht)",
+          "cooling_climate": "Climate-entiteit voor koelen (optioneel)",
+          "heating_climate": "Climate-entiteit voor verwarmen (optioneel)",
+          "outdoor_temp_sensor": "Buitentemperatuursensor (optioneel)",
+          "humidity_sensor": "Luchtvochtigheidssensor buiten (optioneel)",
+          "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen",
+          "turn_off_when_outdoor_unavailable": "HVAC uitschakelen als buitentemperatuur niet beschikbaar is"
+        }
+      },
+      "preset": {
+        "title": "Startcurve",
+        "description": "Een preset vult de curvepunten. Kies Leeg beginnen / custom om nu zelf 3 tot 6 punten in te voeren.",
+        "data": {
+          "preset": "Preset"
+        }
+      },
+      "thresholds": {
+        "title": "Hysterese-drempels voor buitentemperatuur",
+        "data": {
+          "cooling_on_threshold": "Koelen aan boven buitentemperatuur",
+          "cooling_off_threshold": "Koelen uit onder buitentemperatuur",
+          "heating_on_threshold": "Verwarmen aan onder buitentemperatuur",
+          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur"
+        }
+      },
+      "custom_cooling_curve": {
+        "title": "Eigen koelcurve maken",
+        "description": "Voer 3 tot 6 punten in. Elk punt koppelt een buitentemperatuur aan de gewenste koeltemperatuur.",
+        "data": {
+          "point_count": "Aantal punten",
+          "outdoor_temp_1": "Punt 1: buitentemperatuur",
+          "setpoint_1": "Punt 1: gewenste koeltemperatuur",
+          "outdoor_temp_2": "Punt 2: buitentemperatuur",
+          "setpoint_2": "Punt 2: gewenste koeltemperatuur",
+          "outdoor_temp_3": "Punt 3: buitentemperatuur",
+          "setpoint_3": "Punt 3: gewenste koeltemperatuur",
+          "outdoor_temp_4": "Punt 4: buitentemperatuur",
+          "setpoint_4": "Punt 4: gewenste koeltemperatuur",
+          "outdoor_temp_5": "Punt 5: buitentemperatuur",
+          "setpoint_5": "Punt 5: gewenste koeltemperatuur",
+          "outdoor_temp_6": "Punt 6: buitentemperatuur",
+          "setpoint_6": "Punt 6: gewenste koeltemperatuur"
+        }
+      },
+      "custom_heating_curve": {
+        "title": "Eigen verwarmingscurve maken",
+        "description": "Voer 3 tot 6 punten in. Elk punt koppelt een buitentemperatuur aan de gewenste verwarmingstemperatuur.",
+        "data": {
+          "point_count": "Aantal punten",
+          "outdoor_temp_1": "Punt 1: buitentemperatuur",
+          "setpoint_1": "Punt 1: gewenste verwarmingstemperatuur",
+          "outdoor_temp_2": "Punt 2: buitentemperatuur",
+          "setpoint_2": "Punt 2: gewenste verwarmingstemperatuur",
+          "outdoor_temp_3": "Punt 3: buitentemperatuur",
+          "setpoint_3": "Punt 3: gewenste verwarmingstemperatuur",
+          "outdoor_temp_4": "Punt 4: buitentemperatuur",
+          "setpoint_4": "Punt 4: gewenste verwarmingstemperatuur",
+          "outdoor_temp_5": "Punt 5: buitentemperatuur",
+          "setpoint_5": "Punt 5: gewenste verwarmingstemperatuur",
+          "outdoor_temp_6": "Punt 6: buitentemperatuur",
+          "setpoint_6": "Punt 6: gewenste verwarmingstemperatuur"
+        }
+      },
+      "custom_curve": {
+        "title": "Eigen stook-/koellijn maken",
+        "description": "Voer 3 tot 6 punten in. Deze ene curve wordt gebruikt voor zowel verwarmen als koelen.",
+        "data": {
+          "point_count": "Aantal punten",
+          "outdoor_temp_1": "Punt 1: buitentemperatuur",
+          "setpoint_1": "Punt 1: doeltemperatuur",
+          "outdoor_temp_2": "Punt 2: buitentemperatuur",
+          "setpoint_2": "Punt 2: doeltemperatuur",
+          "outdoor_temp_3": "Punt 3: buitentemperatuur",
+          "setpoint_3": "Punt 3: doeltemperatuur",
+          "outdoor_temp_4": "Punt 4: buitentemperatuur",
+          "setpoint_4": "Punt 4: doeltemperatuur",
+          "outdoor_temp_5": "Punt 5: buitentemperatuur",
+          "setpoint_5": "Punt 5: doeltemperatuur",
+          "outdoor_temp_6": "Punt 6: buitentemperatuur",
+          "setpoint_6": "Punt 6: doeltemperatuur"
+        }
+      }
+    },
+    "error": {
+      "missing_control_or_sensor_only": "Kies koelen, verwarmen, of alleen-sensor-modus. Alleen-sensor maakt entiteiten voor automatiseringen maar bedient geen HVAC.",
+      "invalid_curve": "Curvepunten moeten volledig zijn en unieke buitentemperaturen hebben.",
+      "unsupported_cooling_mode": "Deze climate-entiteit ondersteunt de koelmodus niet.",
+      "unsupported_heating_mode": "Deze climate-entiteit ondersteunt de verwarmingsmodus niet.",
+      "invalid_cooling_hysteresis": "De temperatuur voor koelen aan moet hoger zijn dan die voor koelen uit.",
+      "invalid_heating_hysteresis": "De temperatuur voor verwarmen uit moet hoger zijn dan die voor verwarmen aan.",
+      "overlapping_heating_cooling": "De temperatuur voor verwarmen uit moet lager zijn dan die voor koelen aan."
+    },
+    "abort": {
+      "already_configured": "Deze curvenaam is al ingesteld."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Instellingen voor de HVAC-curve",
+        "menu_options": {
+          "linked_entities": "Gekoppelde apparaten en sensoren",
+          "preset": "Een ingebouwde preset toepassen",
+          "custom_curve": "Eigen stook-/koellijn maken of aanpassen",
+          "thresholds": "Inschakel- en uitschakeltemperaturen"
+        },
+        "menu_option_descriptions": {
+          "linked_entities": "Kies de climate-apparaten en sensoren voor buitentemperatuur en buitenluchtvochtigheid.",
+          "preset": "Vervang de huidige curve door een ingebouwde startcurve.",
+          "custom_curve": "Stel één gedeelde curve met 3-6 punten in voor zowel verwarmen als koelen.",
+          "thresholds": "Bepaal wanneer verwarmen en koelen aan- en uitgaan op basis van de buitentemperatuur."
+        }
+      },
+      "linked_entities": {
+        "title": "Gekoppelde entiteiten",
+        "description": "Koelen en verwarmen zijn onafhankelijk. Je mag alleen koelen, alleen verwarmen, beide, of alleen-sensor-modus gebruiken. Alleen-sensor-modus maakt de doel-setpoint- en actief-sensoren aan zonder commando's naar climate-entiteiten te sturen.",
+        "data": {
+          "cooling_climate": "Climate-entiteit voor koelen (optioneel)",
+          "heating_climate": "Climate-entiteit voor verwarmen (optioneel)",
+          "outdoor_temp_sensor": "Buitentemperatuursensor (optioneel)",
+          "humidity_sensor": "Luchtvochtigheidssensor buiten (optioneel)",
+          "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen",
+          "turn_off_when_outdoor_unavailable": "HVAC uitschakelen als buitentemperatuur niet beschikbaar is"
+        }
+      },
+      "preset": {
+        "title": "Preset toepassen",
+        "description": "Een ingebouwde preset overschrijft de huidige curve. Kies Custom om de curve-editor te openen.",
+        "data": {
+          "preset": "Curvepreset"
+        }
+      },
+      "custom_curve": {
+        "title": "Eigen stook-/koellijn",
+        "description": "Voer 3 tot 6 punten in. Deze ene curve wordt gebruikt voor zowel verwarmen als koelen.",
+        "data": {
+          "point_count": "Aantal punten",
+          "outdoor_temp_1": "Punt 1: buitentemperatuur",
+          "setpoint_1": "Punt 1: doeltemperatuur",
+          "outdoor_temp_2": "Punt 2: buitentemperatuur",
+          "setpoint_2": "Punt 2: doeltemperatuur",
+          "outdoor_temp_3": "Punt 3: buitentemperatuur",
+          "setpoint_3": "Punt 3: doeltemperatuur",
+          "outdoor_temp_4": "Punt 4: buitentemperatuur",
+          "setpoint_4": "Punt 4: doeltemperatuur",
+          "outdoor_temp_5": "Punt 5: buitentemperatuur",
+          "setpoint_5": "Punt 5: doeltemperatuur",
+          "outdoor_temp_6": "Punt 6: buitentemperatuur",
+          "setpoint_6": "Punt 6: doeltemperatuur"
+        }
+      },
+      "cooling_curve": {
+        "title": "Koelcurve aanpassen",
+        "description": "Stel 3 tot 6 koelcurvepunten in. Elk punt koppelt een buitentemperatuur aan een doeltemperatuur.",
+        "data": {
+          "point_count": "Aantal punten",
+          "outdoor_temp_1": "Punt 1: buitentemperatuur",
+          "setpoint_1": "Punt 1: gewenste koeltemperatuur",
+          "outdoor_temp_2": "Punt 2: buitentemperatuur",
+          "setpoint_2": "Punt 2: gewenste koeltemperatuur",
+          "outdoor_temp_3": "Punt 3: buitentemperatuur",
+          "setpoint_3": "Punt 3: gewenste koeltemperatuur",
+          "outdoor_temp_4": "Punt 4: buitentemperatuur",
+          "setpoint_4": "Punt 4: gewenste koeltemperatuur",
+          "outdoor_temp_5": "Punt 5: buitentemperatuur",
+          "setpoint_5": "Punt 5: gewenste koeltemperatuur",
+          "outdoor_temp_6": "Punt 6: buitentemperatuur",
+          "setpoint_6": "Punt 6: gewenste koeltemperatuur"
+        }
+      },
+      "heating_curve": {
+        "title": "Verwarmingscurve aanpassen",
+        "description": "Stel 3 tot 6 verwarmingscurvepunten in. Elk punt koppelt een buitentemperatuur aan een doeltemperatuur.",
+        "data": {
+          "point_count": "Aantal punten",
+          "outdoor_temp_1": "Punt 1: buitentemperatuur",
+          "setpoint_1": "Punt 1: gewenste verwarmingstemperatuur",
+          "outdoor_temp_2": "Punt 2: buitentemperatuur",
+          "setpoint_2": "Punt 2: gewenste verwarmingstemperatuur",
+          "outdoor_temp_3": "Punt 3: buitentemperatuur",
+          "setpoint_3": "Punt 3: gewenste verwarmingstemperatuur",
+          "outdoor_temp_4": "Punt 4: buitentemperatuur",
+          "setpoint_4": "Punt 4: gewenste verwarmingstemperatuur",
+          "outdoor_temp_5": "Punt 5: buitentemperatuur",
+          "setpoint_5": "Punt 5: gewenste verwarmingstemperatuur",
+          "outdoor_temp_6": "Punt 6: buitentemperatuur",
+          "setpoint_6": "Punt 6: gewenste verwarmingstemperatuur"
+        }
+      },
+      "thresholds": {
+        "title": "Buitentemperatuur-drempels",
+        "data": {
+          "cooling_on_threshold": "Koelen aan boven buitentemperatuur",
+          "cooling_off_threshold": "Koelen uit onder buitentemperatuur",
+          "heating_on_threshold": "Verwarmen aan onder buitentemperatuur",
+          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur"
+        }
+      }
+    },
+    "error": {
+      "missing_control_or_sensor_only": "Kies koelen, verwarmen, of alleen-sensor-modus. Alleen-sensor maakt entiteiten voor automatiseringen maar bedient geen HVAC.",
+      "invalid_curve": "Curvepunten moeten volledig zijn en unieke buitentemperaturen hebben.",
+      "unsupported_cooling_mode": "Deze climate-entiteit ondersteunt de koelmodus niet.",
+      "unsupported_heating_mode": "Deze climate-entiteit ondersteunt de verwarmingsmodus niet.",
+      "invalid_cooling_hysteresis": "De temperatuur voor koelen aan moet hoger zijn dan die voor koelen uit.",
+      "invalid_heating_hysteresis": "De temperatuur voor verwarmen uit moet hoger zijn dan die voor verwarmen aan.",
+      "overlapping_heating_cooling": "De temperatuur voor verwarmen uit moet lager zijn dan die voor koelen aan."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "target_setpoint": {
+        "name": "Doeltemperatuur volgens curve"
+      }
+    },
+    "binary_sensor": {
+      "cooling_active": {
+        "name": "Koelen actief — aan boven {on_threshold} °C, uit onder {off_threshold} °C"
+      },
+      "heating_active": {
+        "name": "Verwarmen actief — aan onder {on_threshold} °C, uit boven {off_threshold} °C"
+      }
+    },
+    "number": {
+      "cooling_on_threshold": {
+        "name": "Koelen: inschakelen boven"
+      },
+      "cooling_off_threshold": {
+        "name": "Koelen: uitschakelen onder"
+      },
+      "heating_on_threshold": {
+        "name": "Verwarmen: inschakelen onder"
+      },
+      "heating_off_threshold": {
+        "name": "Verwarmen: uitschakelen boven"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Curvepreset — Custom aanpassen via Configureren"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "HVAC Setpoint Curve",
+  "render_readme": true,
+  "domains": ["climate", "sensor", "binary_sensor", "number", "select"],
+  "homeassistant": "2025.12.0"
+}

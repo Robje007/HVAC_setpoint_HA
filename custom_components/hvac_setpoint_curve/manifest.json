@@ -1,0 +1,13 @@
+{
+  "domain": "hvac_setpoint_curve",
+  "name": "HVAC Setpoint Curve",
+  "codeowners": ["@Robje007"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/Robje007/HVAC_setpoint_HA",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Robje007/HVAC_setpoint_HA/issues",
+  "requirements": [],
+  "version": "0.3.0"
+}

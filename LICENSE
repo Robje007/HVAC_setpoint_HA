@@ -1,0 +1,38 @@
+HVAC Setpoint Curve Personal Use License 1.0
+
+Copyright (c) 2026 Robin Nieuwenhuis. All rights reserved.
+
+1. Personal use
+
+Permission is granted to download, install, run, and privately modify this
+software solely for personal, non-commercial use with Home Assistant.
+
+2. No redistribution or commercial use
+
+Except for rights that GitHub necessarily grants to users of its service under
+the GitHub Terms of Service, no permission is granted to publish, redistribute,
+sublicense, sell, rent, host for third parties, or commercially exploit this
+software or modified versions of it. No additional permission is granted to
+maintain a public copy or fork as a separate project.
+
+3. Contributions
+
+Contributions may be proposed to the original repository by pull request. By
+submitting a contribution, you certify that you have the right to submit it and
+grant the copyright holder a perpetual, worldwide, irrevocable, royalty-free
+license to use, reproduce, modify, distribute, sublicense, and relicense the
+contribution as part of this project. Acceptance and merging remain at the sole
+discretion of the repository owner.
+
+4. Ownership
+
+This license does not transfer ownership of the software or its branding. All
+rights not expressly granted above are reserved by the copyright holder.
+
+5. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
