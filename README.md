@@ -99,7 +99,7 @@ Later, open **Configure** on the integration entry to:
 
 - Change linked entities.
 - Apply a preset.
-- Create or edit one custom stook-/koellijn shared by heating and cooling.
+- Create or edit one custom heating/cooling curve shared by both modes.
 - Edit thresholds.
 
 To create a custom curve, open **Configure** and choose **Create or edit custom heating/cooling curve**. The same 3-6 points are used by both heating and cooling. Selecting `Custom` on the preset entity itself marks the active preset; Home Assistant select entities cannot open an editor screen.
@@ -131,7 +131,7 @@ entity: sensor.living_room_ac_curve_target_setpoint
 title: Living room HVAC curve
 ```
 
-The card edits one custom curve shared by heating and cooling. Individual setpoints appear on the left and the live stook-/koellijn appears on the right. A custom curve requires at least three points.
+The card edits one custom curve shared by heating and cooling. Individual setpoints appear on the left and the live heating/cooling curve appears on the right. A custom curve requires at least three points.
 
 The card saves changes through:
 
