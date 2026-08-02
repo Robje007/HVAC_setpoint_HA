@@ -4,7 +4,7 @@ version = "0.3.0"
 description = "Home Assistant custom integration for weather-compensated HVAC setpoint curves"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "LicenseRef-HVAC-Setpoint-Curve-Personal-Use-1.0" }
+license = { text = "GPL-3.0-only" }
 authors = [{ name = "Robin Nieuwenhuis" }]
 
 [project.optional-dependencies]

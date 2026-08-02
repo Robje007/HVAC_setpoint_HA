@@ -208,6 +208,6 @@ Validation workflows are included for hassfest and HACS.
 
 ## License and contributions
 
-Personal, non-commercial Home Assistant use is permitted. Republishing, redistribution, and commercial use are not permitted beyond the rights GitHub itself provides for public repositories. See [LICENSE](LICENSE) for the exact terms.
+This project is licensed under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`). You may use, modify, fork, and redistribute it under the GPLv3 conditions, including preserving the same license and providing the corresponding source when distributing modified versions.
 
 Contributions are welcome through reviewed pull requests. Changes are merged only after approval by `@Robje007`; see [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -12,4 +12,4 @@ Bug reports and proposed improvements are welcome.
 
 Direct changes to `main`, force pushes, and branch deletion are protected. A pull request does not guarantee acceptance.
 
-By submitting a contribution, you agree to the contribution grant in [LICENSE](LICENSE).
+By submitting a contribution, you agree that it is provided under the repository's [GNU GPL v3.0 license](LICENSE).

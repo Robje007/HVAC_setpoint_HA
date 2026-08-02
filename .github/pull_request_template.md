@@ -12,4 +12,4 @@ Explain the problem and user impact.
 - [ ] Ruff passes
 - [ ] Hassfest passes
 - [ ] HACS validation passes
-- [ ] I agree to the contribution terms in `LICENSE`
+- [ ] I provide this contribution under the GNU GPL v3.0 license
