@@ -1,6 +1,6 @@
 # HVAC Setpoint Curve
 
-![HVAC Setpoint Curve logo](assets/logo.png)
+<img src="assets/logo.png" alt="HVAC Setpoint Curve logo" width="180">
 
 Weather-compensated HVAC setpoint curves for Home Assistant.
 
