@@ -2,9 +2,13 @@
 
 <img src="assets/logo.png" alt="HVAC Setpoint Curve logo" width="180">
 
+[![Support on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/robje007)
+
 Weather-compensated HVAC setpoint curves for Home Assistant.
 
 This custom integration computes a target HVAC setpoint from a configurable outdoor temperature curve. It can expose the computed setpoint for automations, and optionally control linked heating and cooling `climate` entities with editable outdoor-temperature hysteresis thresholds.
+
+If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-fi](https://ko-fi.com/robje007).
 
 ## Status
 
