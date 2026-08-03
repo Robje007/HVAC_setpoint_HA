@@ -9,12 +9,16 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import (
     CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_PRESET,
     CONF_CURVE_POINTS,
     CONF_ENTRY_ID,
     CONF_HEATING_CURVE_POINTS,
+    CONF_HEATING_PRESET,
     CONF_MODE,
     CONF_POINTS,
     CONF_PRESET,
+    DEFAULT_HEATING_CURVE_POINTS,
+    DEFAULT_PRESET,
     DOMAIN,
     MODE_BOTH,
     MODE_COOLING,
@@ -71,8 +75,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         if mode in (MODE_COOLING, MODE_BOTH):
             options[CONF_CURVE_POINTS] = points
             options[CONF_COOLING_CURVE_POINTS] = points
+            options[CONF_COOLING_PRESET] = PRESET_CUSTOM
         if mode in (MODE_HEATING, MODE_BOTH):
             options[CONF_HEATING_CURVE_POINTS] = points
+            options[CONF_HEATING_PRESET] = PRESET_CUSTOM
         hass.config_entries.async_update_entry(entry, options=options)
 
         coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
@@ -115,6 +121,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: HvacSetpointConfigEntry)
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
+
+    legacy_preset_entity = entity_registry.async_get_entity_id(
+        "select",
+        DOMAIN,
+        f"{entry.entry_id}_preset",
+    )
+    if legacy_preset_entity is not None:
+        options = {**entry.data, **entry.options}
+        replacement = "cooling_preset" if options.get("cooling_climate") else "heating_preset"
+        entity_registry.async_update_entity(
+            legacy_preset_entity,
+            new_unique_id=f"{entry.entry_id}_{replacement}",
+        )
 
     coordinator = HvacSetpointCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -171,8 +190,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: HvacSetpointConfigEntr
             options[CONF_COOLING_CURVE_POINTS] = shared_points
             options[CONF_HEATING_CURVE_POINTS] = shared_points
 
-    if old_version < 3:
-        hass.config_entries.async_update_entry(entry, data=data, options=options, version=3)
+    if old_version < 4:
+        legacy_preset = options.get(CONF_PRESET, data.get(CONF_PRESET, PRESET_CUSTOM))
+        heating_curve = options.get(CONF_HEATING_CURVE_POINTS, data.get(CONF_HEATING_CURVE_POINTS))
+        heating_preset = DEFAULT_PRESET if heating_curve == DEFAULT_HEATING_CURVE_POINTS else PRESET_CUSTOM
+        options.setdefault(CONF_COOLING_PRESET, legacy_preset)
+        options.setdefault(CONF_HEATING_PRESET, heating_preset)
+        hass.config_entries.async_update_entry(entry, data=data, options=options, version=4)
 
     return True
 

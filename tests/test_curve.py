@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from custom_components.hvac_setpoint_curve.const import preset_curve
 from custom_components.hvac_setpoint_curve.curve import (
     CurvePoint,
     computed_setpoint,
@@ -70,3 +71,19 @@ def test_computed_setpoint_rounds_to_one_decimal() -> None:
 
     points = [CurvePoint(0, 20), CurvePoint(3, 21), CurvePoint(6, 22)]
     assert computed_setpoint(points, 1, 65) == 20.4
+
+
+def test_humidity_adjustment_can_cool_down_or_heat_up() -> None:
+    """High humidity lowers cooling targets and raises heating targets."""
+
+    points = [CurvePoint(0, 22), CurvePoint(10, 22), CurvePoint(20, 22)]
+    assert computed_setpoint(points, 10, 70, humidity_direction=-1) == 21.8
+    assert computed_setpoint(points, 10, 70, humidity_direction=1) == 22.2
+
+
+def test_heating_profiles_decrease_toward_mild_weather() -> None:
+    """Heating presets do not reuse cooling points at mild outdoor temperatures."""
+
+    for preset in ("comfort", "eco"):
+        points = preset_curve(preset, "heating")
+        assert points[0]["setpoint"] > points[-1]["setpoint"]

@@ -11,16 +11,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import HvacSetpointConfigEntry
 from .const import (
     CONF_COOLING_CLIMATE,
-    CONF_COOLING_OFF_THRESHOLD,
-    CONF_COOLING_ON_THRESHOLD,
     CONF_HEATING_CLIMATE,
-    CONF_HEATING_OFF_THRESHOLD,
-    CONF_HEATING_ON_THRESHOLD,
     CONF_SENSOR_ONLY,
-    DEFAULT_COOLING_OFF_THRESHOLD,
-    DEFAULT_COOLING_ON_THRESHOLD,
-    DEFAULT_HEATING_OFF_THRESHOLD,
-    DEFAULT_HEATING_ON_THRESHOLD,
     DOMAIN,
 )
 from .coordinator import HvacCurveData
@@ -45,7 +37,7 @@ async def async_setup_entry(
 
 
 class HvacModeBinarySensor(HvacSetpointEntity, BinarySensorEntity):
-    """Binary sensor exposing a hysteresis state."""
+    """Binary sensor exposing the current heating or cooling demand state."""
 
     def __init__(
         self,
@@ -58,22 +50,6 @@ class HvacModeBinarySensor(HvacSetpointEntity, BinarySensorEntity):
         super().__init__(coordinator, key)
         self._attr_translation_key = key
         self._value_fn = value_fn
-
-    @property
-    def translation_placeholders(self) -> dict[str, str]:
-        """Return the current hysteresis thresholds for the translated name."""
-
-        options = self.coordinator.merged_options
-        if self._attr_translation_key == "heating_active":
-            on_threshold = options.get(CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD)
-            off_threshold = options.get(CONF_HEATING_OFF_THRESHOLD, DEFAULT_HEATING_OFF_THRESHOLD)
-        else:
-            on_threshold = options.get(CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD)
-            off_threshold = options.get(CONF_COOLING_OFF_THRESHOLD, DEFAULT_COOLING_OFF_THRESHOLD)
-        return {
-            "on_threshold": f"{float(on_threshold):.1f}",
-            "off_threshold": f"{float(off_threshold):.1f}",
-        }
 
     @property
     def is_on(self) -> bool | None:

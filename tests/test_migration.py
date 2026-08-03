@@ -11,8 +11,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.hvac_setpoint_curve import async_migrate_entry
 from custom_components.hvac_setpoint_curve.const import (
     CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_PRESET,
     CONF_CURVE_POINTS,
     CONF_HEATING_CURVE_POINTS,
+    CONF_HEATING_PRESET,
     CONF_PRESET,
     DOMAIN,
     PRESET_CUSTOM,
@@ -41,10 +43,12 @@ async def test_custom_curves_migrate_to_one_shared_curve(hass) -> None:
     entry.add_to_hass(hass)
 
     assert await async_migrate_entry(hass, entry)
-    assert entry.version == 3
+    assert entry.version == 4
     assert entry.options[CONF_CURVE_POINTS] == shared
     assert entry.options[CONF_COOLING_CURVE_POINTS] == shared
     assert entry.options[CONF_HEATING_CURVE_POINTS] == shared
+    assert entry.options[CONF_COOLING_PRESET] == PRESET_CUSTOM
+    assert entry.options[CONF_HEATING_PRESET] == PRESET_CUSTOM
 
 
 async def test_two_point_curve_migrates_to_three_points(hass) -> None:
@@ -62,6 +66,6 @@ async def test_two_point_curve_migrates_to_three_points(hass) -> None:
     entry.add_to_hass(hass)
 
     assert await async_migrate_entry(hass, entry)
-    assert entry.version == 3
+    assert entry.version == 4
     assert entry.options[CONF_CURVE_POINTS][1] == {"outdoor_temp": 10.0, "setpoint": 22.0}
     assert len(entry.options[CONF_CURVE_POINTS]) == 3

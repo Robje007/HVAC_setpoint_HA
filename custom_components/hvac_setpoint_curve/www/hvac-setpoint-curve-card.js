@@ -4,7 +4,7 @@ class HvacSetpointCurveCard extends HTMLElement {
       throw new Error("entity is required");
     }
     this.config = config;
-    this.mode = "both";
+    this.mode = null;
     this.points = [];
     this.dirty = false;
     this.dragIndex = null;
@@ -35,30 +35,72 @@ class HvacSetpointCurveCard extends HTMLElement {
       ? {
           heating: "Verwarmen",
           cooling: "Koelen",
-          outdoorCurve: "Gedeelde stook-/koellijn op basis van buitentemperatuur",
+          outdoorCurve: "Afzonderlijke stook- en koellijnen op basis van buitentemperatuur",
           customPreset: "Eigen preset",
           help: "Voeg minimaal 3 losse setpoints toe. Wijzigingen verschijnen direct in de curve.",
           outdoor: "Buiten °C",
           setpoint: "Doel °C",
           remove: "Verwijder",
           add: "Punt toevoegen",
-          saveCurve: "Stook-/koellijn opslaan",
+          saveCurve: "Gekozen curve opslaan",
+          outdoorNow: "Buiten nu",
+          outdoorAverage: "Buiten gemiddeld",
+          coolingIndoor: "Binnen koelen",
+          heatingIndoor: "Binnen verwarmen",
+          targetNow: "Doel nu",
+          coolingStabilizing: "Koeling stabiliseert — modus blijft beschikbaar voor restwarmte",
+          heatingStabilizing: "Verwarming stabiliseert — modus blijft beschikbaar voor restkou",
+          demandHelp: "Buiten gemiddeld bepaalt of een cyclus mag starten. Tijdens stabilisatie zet restwarmte de teller terug; duidelijke afkoeling voorbij het doel schakelt direct uit.",
         }
       : {
           heating: "Heating",
           cooling: "Cooling",
-          outdoorCurve: "Shared heating/cooling curve based on outdoor temperature",
+          outdoorCurve: "Separate heating and cooling curves based on outdoor temperature",
           customPreset: "Custom preset",
           help: "Add at least 3 individual setpoints. Changes appear in the curve immediately.",
           outdoor: "Outdoor °C",
           setpoint: "Target °C",
           remove: "Remove",
           add: "Add point",
-          saveCurve: "Save heating/cooling curve",
+          saveCurve: "Save selected curve",
+          outdoorNow: "Outdoor now",
+          outdoorAverage: "Outdoor average",
+          coolingIndoor: "Cooling indoor",
+          heatingIndoor: "Heating indoor",
+          targetNow: "Target now",
+          coolingStabilizing: "Cooling is stabilizing — mode remains available for residual heat",
+          heatingStabilizing: "Heating is stabilizing — mode remains available for residual cold",
+          demandHelp: "The outdoor average permits a cycle to start. Residual drift resets stabilization; clear cooling or heating past target switches the mode off immediately.",
         };
 
+    const formatTemperature = (value) => {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toFixed(1)} °C` : null;
+    };
+    const statusItems = [
+      [ui.outdoorNow, attrs.outdoor_temperature_used],
+      [ui.outdoorAverage, attrs.outdoor_temperature_average],
+      [ui.coolingIndoor, attrs.cooling_indoor_temperature_used],
+      [ui.heatingIndoor, attrs.heating_indoor_temperature_used],
+      [ui.targetNow, state.state],
+    ].filter(([, value]) => formatTemperature(value));
+    const stabilizationMessages = [
+      attrs.cooling_stabilizing ? ui.coolingStabilizing : null,
+      attrs.heating_stabilizing ? ui.heatingStabilizing : null,
+    ].filter(Boolean);
+
+    const availableModes = [
+      attrs.cooling_enabled ? "cooling" : null,
+      attrs.heating_enabled ? "heating" : null,
+    ].filter(Boolean);
+    if (!availableModes.includes(this.mode)) {
+      this.mode = availableModes[0] || "cooling";
+      this.dirty = false;
+    }
     if (!this.dirty) {
-      this.points = structuredClone(attrs.curve_points || attrs.cooling_curve_points || attrs.heating_curve_points || []);
+      const selectedCurve =
+        this.mode === "heating" ? attrs.heating_curve_points : attrs.cooling_curve_points;
+      this.points = structuredClone(selectedCurve || attrs.curve_points || []);
     }
 
     this.shadowRoot.innerHTML = `
@@ -161,6 +203,29 @@ class HvacSetpointCurveCard extends HTMLElement {
           color: var(--secondary-text-color, #666);
           font-size: 12px;
         }
+        .status {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 8px;
+          margin: 0 0 8px;
+        }
+        .metric {
+          padding: 8px 10px;
+          border: 1px solid var(--divider-color, #d8d8d8);
+          border-radius: 6px;
+        }
+        .metric span, .metric strong { display: block; }
+        .metric span { color: var(--secondary-text-color, #666); font-size: 11px; }
+        .metric strong { margin-top: 2px; font-size: 14px; }
+        .demand-help { margin: 0 0 14px; }
+        .stabilizing {
+          margin: 0 0 10px;
+          padding: 8px 10px;
+          border-radius: 6px;
+          background: color-mix(in srgb, var(--primary-color, #03a9f4) 12%, transparent);
+          color: var(--primary-text-color, #111);
+          font-size: 12px;
+        }
         @media (max-width: 760px) {
           .editor { grid-template-columns: 1fr; }
         }
@@ -172,7 +237,28 @@ class HvacSetpointCurveCard extends HTMLElement {
               <h2>${this.config.title || "HVAC Setpoint Curve"}</h2>
               <div class="muted">${ui.outdoorCurve}</div>
             </div>
+            ${
+              availableModes.length > 1
+                ? `<div class="tabs">
+                    <button data-mode="cooling" class="${this.mode === "cooling" ? "active" : ""}">${ui.cooling}</button>
+                    <button data-mode="heating" class="${this.mode === "heating" ? "active" : ""}">${ui.heating}</button>
+                  </div>`
+                : ""
+            }
           </div>
+          <div class="status">
+            ${statusItems
+              .map(
+                ([label, value]) => `
+              <div class="metric">
+                <span>${label}</span>
+                <strong>${formatTemperature(value)}</strong>
+              </div>`
+              )
+              .join("")}
+          </div>
+          ${stabilizationMessages.map((message) => `<div class="stabilizing">${message}</div>`).join("")}
+          <div class="muted demand-help">${ui.demandHelp}</div>
           <div class="editor">
             <div class="editor-side">
               <p class="editor-title">${ui.customPreset}</p>
@@ -209,6 +295,14 @@ class HvacSetpointCurveCard extends HTMLElement {
   }
 
   bindEvents(entryId) {
+    this.shadowRoot.querySelectorAll("[data-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        this.mode = button.dataset.mode;
+        this.dirty = false;
+        this.render();
+      });
+    });
+
     this.shadowRoot.querySelectorAll("input").forEach((input) => {
       input.addEventListener("input", () => {
         const index = Number(input.dataset.index);
@@ -241,7 +335,7 @@ class HvacSetpointCurveCard extends HTMLElement {
       if (this.points.length < 3) return;
       this._hass.callService("hvac_setpoint_curve", "set_curve", {
         entry_id: entryId,
-        mode: "both",
+        mode: this.mode,
         points: this.points,
       });
       this.dirty = false;

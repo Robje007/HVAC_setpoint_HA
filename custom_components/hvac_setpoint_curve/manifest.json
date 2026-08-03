@@ -9,5 +9,5 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/Robje007/HVAC_setpoint_HA/issues",
   "requirements": [],
-  "version": "0.4.0"
+  "version": "1.0.0"
 }

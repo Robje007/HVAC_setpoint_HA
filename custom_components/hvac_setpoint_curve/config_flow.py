@@ -15,12 +15,20 @@ from .const import (
     CONF_COOLING_CURVE_POINTS,
     CONF_COOLING_OFF_THRESHOLD,
     CONF_COOLING_ON_THRESHOLD,
+    CONF_COOLING_PRESET,
     CONF_CURVE_POINTS,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
     CONF_HEATING_OFF_THRESHOLD,
     CONF_HEATING_ON_THRESHOLD,
+    CONF_HEATING_PRESET,
     CONF_HUMIDITY_SENSOR,
+    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
+    CONF_INDOOR_SETTLING_HOURS,
+    CONF_INDOOR_START_DELTA,
+    CONF_INDOOR_STOP_DELTA,
+    CONF_INDOOR_TEMP_SENSOR,
+    CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_PRESET,
     CONF_SENSOR_ONLY,
@@ -32,6 +40,11 @@ from .const import (
     DEFAULT_HEATING_CURVE_POINTS,
     DEFAULT_HEATING_OFF_THRESHOLD,
     DEFAULT_HEATING_ON_THRESHOLD,
+    DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA,
+    DEFAULT_INDOOR_SETTLING_HOURS,
+    DEFAULT_INDOOR_START_DELTA,
+    DEFAULT_INDOOR_STOP_DELTA,
+    DEFAULT_OUTDOOR_AVERAGING_HOURS,
     DEFAULT_PRESET,
     DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
     DOMAIN,
@@ -46,6 +59,8 @@ from .const import (
     TEMPERATURE_MIN,
     THRESHOLD_MAX,
     THRESHOLD_MIN,
+    preset_curve,
+    preset_name,
 )
 from .curve import CurvePoint, parse_curve_points, serialize_curve_points
 from .validation import threshold_error
@@ -54,6 +69,7 @@ _LINKED_ENTITY_KEYS = (
     CONF_COOLING_CLIMATE,
     CONF_HEATING_CLIMATE,
     CONF_OUTDOOR_TEMP_SENSOR,
+    CONF_INDOOR_TEMP_SENSOR,
     CONF_HUMIDITY_SENSOR,
 )
 
@@ -64,22 +80,94 @@ def _entity_selector(domain: str) -> selector.EntitySelector:
     return selector.EntitySelector(selector.EntitySelectorConfig(domain=domain))
 
 
-def _preset_options(include_empty: bool = True) -> list[dict[str, str]]:
+def _climate_selector(hass: Any, hvac_mode: str) -> selector.EntitySelector:
+    """Create a climate selector excluding entities known not to support a mode."""
+
+    incompatible_entities = [
+        state.entity_id
+        for state in hass.states.async_all("climate")
+        if (modes := state.attributes.get("hvac_modes")) is not None and hvac_mode not in modes
+    ]
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(
+            domain="climate",
+            exclude_entities=incompatible_entities,
+        )
+    )
+
+
+def _preset_options(language: str, include_empty: bool | None = True) -> list[dict[str, str]]:
     """Return select options for presets."""
 
-    options = [{"value": key, "label": preset["name"]} for key, preset in PRESETS.items()]
+    options = [{"value": key, "label": preset_name(key, language)} for key in PRESETS]
     if include_empty:
-        options.append({"value": PRESET_EMPTY, "label": "Start empty / custom"})
-    else:
-        options.append({"value": PRESET_CUSTOM, "label": "Create or edit custom curve"})
+        options.append({"value": PRESET_EMPTY, "label": preset_name(PRESET_EMPTY, language)})
+    elif include_empty is False:
+        options.append({"value": PRESET_CUSTOM, "label": preset_name(PRESET_CUSTOM, language)})
     return options
 
 
+def _mode_preset_schema(hass: Any, options: dict[str, Any], *, include_empty: bool | None) -> vol.Schema:
+    """Build independent preset fields for the configured operating modes."""
+
+    fields: dict[vol.Marker, Any] = {}
+    legacy_preset = options.get(CONF_PRESET, DEFAULT_PRESET)
+    if _cooling_enabled(options):
+        fields[
+            vol.Required(
+                CONF_COOLING_PRESET,
+                default=options.get(CONF_COOLING_PRESET, legacy_preset),
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=_preset_options(hass.config.language, include_empty=include_empty),
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        )
+    if _heating_enabled(options):
+        heating_options = [
+            item
+            for item in _preset_options(hass.config.language, include_empty=include_empty)
+            if item["value"] != "rail_aggressive_cooling"
+        ]
+        fields[
+            vol.Required(
+                CONF_HEATING_PRESET,
+                default=options.get(CONF_HEATING_PRESET, legacy_preset),
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=heating_options,
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        )
+    return vol.Schema(fields)
+
+
+def _apply_mode_presets(target: dict[str, Any], selected: dict[str, Any]) -> bool:
+    """Apply selected mode presets and return whether a custom editor is needed."""
+
+    needs_custom = False
+    for preset_key, curve_key, mode in (
+        (CONF_COOLING_PRESET, CONF_COOLING_CURVE_POINTS, "cooling"),
+        (CONF_HEATING_PRESET, CONF_HEATING_CURVE_POINTS, "heating"),
+    ):
+        if preset_key not in selected:
+            continue
+        preset = selected[preset_key]
+        target[preset_key] = PRESET_CUSTOM if preset == PRESET_EMPTY else preset
+        if preset in PRESETS:
+            target[curve_key] = preset_curve(preset, mode)
+        elif preset in (PRESET_CUSTOM, PRESET_EMPTY):
+            needs_custom = True
+    return needs_custom
+
+
 def _optional_entity_field(key: str, label_options: dict[str, Any]) -> vol.Optional:
-    """Create an optional field without injecting None as a default."""
+    """Create an optional field that remains clearable when pre-filled."""
 
     if label_options.get(key):
-        return vol.Optional(key, default=label_options[key])
+        return vol.Optional(key, description={"suggested_value": label_options[key]})
     return vol.Optional(key)
 
 
@@ -148,6 +236,78 @@ def _threshold_schema(options: dict[str, Any]) -> vol.Schema:
     return vol.Schema(fields)
 
 
+def _control_behavior_schema(options: dict[str, Any]) -> vol.Schema:
+    """Build thermal-inertia and indoor-demand settings."""
+
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_OUTDOOR_AVERAGING_HOURS,
+                default=options.get(CONF_OUTDOOR_AVERAGING_HOURS, DEFAULT_OUTDOOR_AVERAGING_HOURS),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=24,
+                    step=0.5,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="h",
+                )
+            ),
+            vol.Required(
+                CONF_INDOOR_START_DELTA,
+                default=options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=3,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C",
+                )
+            ),
+            vol.Required(
+                CONF_INDOOR_STOP_DELTA,
+                default=options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=3,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C",
+                )
+            ),
+            vol.Required(
+                CONF_INDOOR_SETTLING_HOURS,
+                default=options.get(CONF_INDOOR_SETTLING_HOURS, DEFAULT_INDOOR_SETTLING_HOURS),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=12,
+                    step=0.5,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="h",
+                )
+            ),
+            vol.Required(
+                CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
+                default=options.get(
+                    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
+                    DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA,
+                ),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.1,
+                    max=3,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C",
+                )
+            ),
+        }
+    )
+
+
 def _cooling_enabled(options: dict[str, Any]) -> bool:
     """Return whether cooling fields should be visible."""
 
@@ -176,7 +336,7 @@ def _climate_mode_errors(hass: Any, options: dict[str, Any]) -> dict[str, str]:
     return errors
 
 
-def _linked_entities_schema(options: dict[str, Any], *, include_name: bool = False) -> vol.Schema:
+def _linked_entities_schema(hass: Any, options: dict[str, Any], *, include_name: bool = False) -> vol.Schema:
     """Build linked entities form schema."""
 
     fields: dict[vol.Marker, Any] = {}
@@ -185,9 +345,10 @@ def _linked_entities_schema(options: dict[str, Any], *, include_name: bool = Fal
 
     fields.update(
         {
-            _optional_entity_field(CONF_COOLING_CLIMATE, options): _entity_selector("climate"),
-            _optional_entity_field(CONF_HEATING_CLIMATE, options): _entity_selector("climate"),
+            _optional_entity_field(CONF_COOLING_CLIMATE, options): _climate_selector(hass, "cool"),
+            _optional_entity_field(CONF_HEATING_CLIMATE, options): _climate_selector(hass, "heat"),
             _optional_entity_field(CONF_OUTDOOR_TEMP_SENSOR, options): _entity_selector("sensor"),
+            _optional_entity_field(CONF_INDOOR_TEMP_SENSOR, options): _entity_selector("sensor"),
             _optional_entity_field(CONF_HUMIDITY_SENSOR, options): _entity_selector("sensor"),
             vol.Required(CONF_SENSOR_ONLY, default=options.get(CONF_SENSOR_ONLY, False)): selector.BooleanSelector(),
             vol.Required(
@@ -267,7 +428,7 @@ def _options_from_entry(entry: config_entries.ConfigEntry) -> dict[str, Any]:
 class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
-    VERSION = 3
+    VERSION = 4
 
     def __init__(self) -> None:
         """Initialize flow state."""
@@ -298,40 +459,25 @@ class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_linked_entities_schema(self._setup_data, include_name=True),
+            data_schema=_linked_entities_schema(self.hass, self._setup_data, include_name=True),
             errors=errors,
         )
 
     async def async_step_preset(self, user_input: dict[str, Any] | None = None):
-        """Choose a starting preset."""
+        """Choose independent starting presets for each operating mode."""
 
         if user_input is not None:
-            preset = user_input[CONF_PRESET]
-            self._setup_data[CONF_PRESET] = preset
-            if preset in PRESETS:
-                self._setup_data[CONF_CURVE_POINTS] = PRESETS[preset]["points"]
-                self._setup_data[CONF_COOLING_CURVE_POINTS] = PRESETS[preset]["points"]
-                self._setup_data[CONF_HEATING_CURVE_POINTS] = DEFAULT_HEATING_CURVE_POINTS
-            else:
-                self._setup_data[CONF_CURVE_POINTS] = DEFAULT_CURVE_POINTS
-                self._setup_data[CONF_COOLING_CURVE_POINTS] = DEFAULT_COOLING_CURVE_POINTS
-                self._setup_data[CONF_HEATING_CURVE_POINTS] = DEFAULT_HEATING_CURVE_POINTS
-                self._setup_data[CONF_PRESET] = PRESET_CUSTOM
+            needs_custom = _apply_mode_presets(self._setup_data, user_input)
+            self._setup_data[CONF_PRESET] = PRESET_CUSTOM
+            self._setup_data.setdefault(CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS)
+            self._setup_data.setdefault(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS)
+            if needs_custom:
                 return await self.async_step_custom_curve()
             return await self.async_step_thresholds()
 
         return self.async_show_form(
             step_id="preset",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_PRESET, default=DEFAULT_PRESET): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=_preset_options(include_empty=True),
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    )
-                }
-            ),
+            data_schema=_mode_preset_schema(self.hass, self._setup_data, include_empty=None),
         )
 
     async def async_step_custom_curve(self, user_input: dict[str, Any] | None = None):
@@ -371,15 +517,27 @@ class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = error
             else:
                 self._setup_data.update(user_input)
-                title = self._setup_data.pop(CONF_NAME)
-                await self.async_set_unique_id(f"{DOMAIN}_{title.lower().replace(' ', '_')}")
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=title, data=self._setup_data)
+                return await self.async_step_control_behavior()
 
         return self.async_show_form(
             step_id="thresholds",
             data_schema=_threshold_schema(self._setup_data),
             errors=errors,
+        )
+
+    async def async_step_control_behavior(self, user_input: dict[str, Any] | None = None):
+        """Configure outdoor smoothing and indoor-temperature demand."""
+
+        if user_input is not None:
+            self._setup_data.update(user_input)
+            title = self._setup_data.pop(CONF_NAME)
+            await self.async_set_unique_id(f"{DOMAIN}_{title.lower().replace(' ', '_')}")
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(title=title, data=self._setup_data)
+
+        return self.async_show_form(
+            step_id="control_behavior",
+            data_schema=_control_behavior_schema(self._setup_data),
         )
 
 
@@ -395,8 +553,7 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Show options menu."""
 
-        menu_options = ["linked_entities", "preset", "custom_curve"]
-        menu_options.append("thresholds")
+        menu_options = ["linked_entities", "preset", "custom_curve", "thresholds", "control_behavior"]
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -421,45 +578,22 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="linked_entities",
-            data_schema=_linked_entities_schema(self._options),
+            data_schema=_linked_entities_schema(self.hass, self._options),
             errors=errors,
         )
 
     async def async_step_preset(self, user_input: dict[str, Any] | None = None):
-        """Apply a built-in preset."""
+        """Apply independent built-in presets for each operating mode."""
 
         if user_input is not None:
-            preset = user_input[CONF_PRESET]
-            if preset == PRESET_CUSTOM:
-                return await self.async_step_custom_curve()
-
-            new_options = {**self.config_entry.options, CONF_PRESET: preset}
-            if preset in PRESETS:
-                new_options[CONF_CURVE_POINTS] = PRESETS[preset]["points"]
-                new_options[CONF_COOLING_CURVE_POINTS] = PRESETS[preset]["points"]
-                new_options.setdefault(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS)
-            elif preset == PRESET_EMPTY:
-                new_options[CONF_CURVE_POINTS] = DEFAULT_CURVE_POINTS
-                new_options[CONF_COOLING_CURVE_POINTS] = DEFAULT_COOLING_CURVE_POINTS
-                new_options[CONF_HEATING_CURVE_POINTS] = DEFAULT_HEATING_CURVE_POINTS
-                new_options[CONF_PRESET] = PRESET_CUSTOM
+            new_options = {**self.config_entry.options}
+            _apply_mode_presets(new_options, user_input)
+            new_options[CONF_PRESET] = PRESET_CUSTOM
             return self.async_create_entry(title="", data=new_options)
 
         return self.async_show_form(
             step_id="preset",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_PRESET,
-                        default=self._options.get(CONF_PRESET, PRESET_CUSTOM),
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=_preset_options(include_empty=False),
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    )
-                }
-            ),
+            data_schema=_mode_preset_schema(self.hass, self._options, include_empty=False),
         )
 
     async def async_step_custom_curve(self, user_input: dict[str, Any] | None = None):
@@ -478,6 +612,8 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
                     CONF_COOLING_CURVE_POINTS: points,
                     CONF_HEATING_CURVE_POINTS: points,
                     CONF_PRESET: PRESET_CUSTOM,
+                    CONF_COOLING_PRESET: PRESET_CUSTOM,
+                    CONF_HEATING_PRESET: PRESET_CUSTOM,
                 }
                 return self.async_create_entry(title="", data=new_options)
 
@@ -511,4 +647,16 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
             step_id="thresholds",
             data_schema=_threshold_schema(self._options),
             errors=errors,
+        )
+
+    async def async_step_control_behavior(self, user_input: dict[str, Any] | None = None):
+        """Edit outdoor smoothing and indoor-temperature demand."""
+
+        if user_input is not None:
+            new_options = {**self.config_entry.options, **user_input}
+            return self.async_create_entry(title="", data=new_options)
+
+        return self.async_show_form(
+            step_id="control_behavior",
+            data_schema=_control_behavior_schema(self._options),
         )

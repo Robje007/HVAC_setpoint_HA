@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "hvac_setpoint_curve"
-VERSION: Final = "0.4.0"
+VERSION: Final = "1.0.0"
 
 PLATFORMS: Final = ["sensor", "binary_sensor", "number", "select", "switch"]
 
@@ -14,9 +14,12 @@ CONF_CURVE_POINTS: Final = "curve_points"
 CONF_COOLING_CURVE_POINTS: Final = "cooling_curve_points"
 CONF_HEATING_CURVE_POINTS: Final = "heating_curve_points"
 CONF_PRESET: Final = "preset"
+CONF_COOLING_PRESET: Final = "cooling_preset"
+CONF_HEATING_PRESET: Final = "heating_preset"
 CONF_COOLING_CLIMATE: Final = "cooling_climate"
 CONF_HEATING_CLIMATE: Final = "heating_climate"
 CONF_OUTDOOR_TEMP_SENSOR: Final = "outdoor_temp_sensor"
+CONF_INDOOR_TEMP_SENSOR: Final = "indoor_temp_sensor"
 CONF_HUMIDITY_SENSOR: Final = "humidity_sensor"
 CONF_SENSOR_ONLY: Final = "sensor_only"
 CONF_CONTROLLER_ENABLED: Final = "controller_enabled"
@@ -24,6 +27,16 @@ CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE: Final = "turn_off_when_outdoor_unavailab
 
 DEFAULT_CONTROLLER_ENABLED: Final = True
 DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE: Final = True
+CONF_OUTDOOR_AVERAGING_HOURS: Final = "outdoor_averaging_hours"
+CONF_INDOOR_START_DELTA: Final = "indoor_start_delta"
+CONF_INDOOR_STOP_DELTA: Final = "indoor_stop_delta"
+CONF_INDOOR_SETTLING_HOURS: Final = "indoor_settling_hours"
+CONF_INDOOR_IMMEDIATE_RELEASE_DELTA: Final = "indoor_immediate_release_delta"
+DEFAULT_OUTDOOR_AVERAGING_HOURS: Final = 3.0
+DEFAULT_INDOOR_START_DELTA: Final = 0.5
+DEFAULT_INDOOR_STOP_DELTA: Final = 0.2
+DEFAULT_INDOOR_SETTLING_HOURS: Final = 2.0
+DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA: Final = 1.0
 
 CONF_COOLING_ON_THRESHOLD: Final = "cooling_on_threshold"
 CONF_COOLING_OFF_THRESHOLD: Final = "cooling_off_threshold"
@@ -31,8 +44,17 @@ CONF_HEATING_ON_THRESHOLD: Final = "heating_on_threshold"
 CONF_HEATING_OFF_THRESHOLD: Final = "heating_off_threshold"
 
 ATTR_OUTDOOR_TEMPERATURE_USED: Final = "outdoor_temperature_used"
+ATTR_OUTDOOR_TEMPERATURE_AVERAGE: Final = "outdoor_temperature_average"
+ATTR_COOLING_INDOOR_TEMPERATURE_USED: Final = "cooling_indoor_temperature_used"
+ATTR_HEATING_INDOOR_TEMPERATURE_USED: Final = "heating_indoor_temperature_used"
+ATTR_COOLING_INDOOR_TEMPERATURE_SOURCE: Final = "cooling_indoor_temperature_source"
+ATTR_HEATING_INDOOR_TEMPERATURE_SOURCE: Final = "heating_indoor_temperature_source"
+ATTR_COOLING_STABILIZING: Final = "cooling_stabilizing"
+ATTR_HEATING_STABILIZING: Final = "heating_stabilizing"
 ATTR_HUMIDITY_USED: Final = "humidity_used"
 ATTR_ACTIVE_PRESET: Final = "active_preset"
+ATTR_COOLING_PRESET: Final = "cooling_preset"
+ATTR_HEATING_PRESET: Final = "heating_preset"
 ATTR_CURVE_POINTS: Final = "curve_points"
 ATTR_COOLING_CURVE_POINTS: Final = "cooling_curve_points"
 ATTR_HEATING_CURVE_POINTS: Final = "heating_curve_points"
@@ -65,6 +87,12 @@ PRESETS: Final = {
             {"outdoor_temp": 20.0, "setpoint": 23.0},
             {"outdoor_temp": 32.0, "setpoint": 25.0},
         ],
+        "heating_points": [
+            {"outdoor_temp": -10.0, "setpoint": 22.0},
+            {"outdoor_temp": 0.0, "setpoint": 21.0},
+            {"outdoor_temp": 12.0, "setpoint": 20.0},
+            {"outdoor_temp": 18.0, "setpoint": 18.0},
+        ],
     },
     "eco": {
         "name": "Eco / energy saving",
@@ -74,9 +102,15 @@ PRESETS: Final = {
             {"outdoor_temp": 24.0, "setpoint": 25.0},
             {"outdoor_temp": 34.0, "setpoint": 27.0},
         ],
+        "heating_points": [
+            {"outdoor_temp": -10.0, "setpoint": 20.0},
+            {"outdoor_temp": 0.0, "setpoint": 19.5},
+            {"outdoor_temp": 12.0, "setpoint": 18.5},
+            {"outdoor_temp": 18.0, "setpoint": 17.0},
+        ],
     },
     "rail_aggressive_cooling": {
-        "name": "Rail-style aggressive cooling",
+        "name": "Aggressive cooling",
         "points": [
             {"outdoor_temp": 18.0, "setpoint": 23.0},
             {"outdoor_temp": 26.0, "setpoint": 21.0},
@@ -85,15 +119,35 @@ PRESETS: Final = {
     },
 }
 
+
+def preset_name(preset_key: str, language: str | None = None) -> str:
+    """Return the localized visible name for a built-in preset."""
+
+    is_dutch = bool(language and language.lower().startswith("nl"))
+    if preset_key == PRESET_CUSTOM:
+        return "Aangepast" if is_dutch else "Custom"
+    if preset_key == PRESET_EMPTY:
+        return "Leeg beginnen / aangepast" if is_dutch else "Start empty / custom"
+    if is_dutch and preset_key == "rail_aggressive_cooling":
+        return "Agressieve koeling"
+    if is_dutch and preset_key == "eco":
+        return "Eco / energiebesparing"
+    return str(PRESETS[preset_key]["name"])
+
+
+def preset_curve(preset_key: str, mode: str) -> list[dict[str, float]]:
+    """Return mode-appropriate points for a built-in preset."""
+
+    preset = PRESETS[preset_key]
+    if mode == "heating" and "heating_points" in preset:
+        return list(preset["heating_points"])
+    return list(preset["points"])
+
+
 DEFAULT_PRESET: Final = "comfort"
 DEFAULT_CURVE_POINTS: Final = PRESETS[DEFAULT_PRESET]["points"]
 DEFAULT_COOLING_CURVE_POINTS: Final = PRESETS["comfort"]["points"]
-DEFAULT_HEATING_CURVE_POINTS: Final = [
-    {"outdoor_temp": -10.0, "setpoint": 22.0},
-    {"outdoor_temp": 0.0, "setpoint": 21.0},
-    {"outdoor_temp": 12.0, "setpoint": 20.0},
-    {"outdoor_temp": 18.0, "setpoint": 18.0},
-]
+DEFAULT_HEATING_CURVE_POINTS: Final = PRESETS[DEFAULT_PRESET]["heating_points"]
 
 SERVICE_SET_CURVE: Final = "set_curve"
 SERVICE_RELOAD_PRESET: Final = "reload_preset"

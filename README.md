@@ -12,19 +12,21 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: `0.4.0`
+Version: `1.0.0`
 
 ## Features
 
 - UI setup, no YAML required.
 - Multiple independent config entries for different rooms or zones.
 - Configurable 3-6 point outdoor temperature to setpoint curve.
-- Built-in presets: Comfort, Eco / energy saving, and Rail-style aggressive cooling.
+- Built-in presets: Comfort, Eco / energy saving, and Aggressive cooling (`Agressieve koeling` in Dutch).
 - Editable live outdoor-temperature thresholds through `number` entities.
-- Preset selection through a `select` entity. Applying a preset overwrites the current curve as a starting point.
+- Separate heating and cooling profile selection through `select` entities. Applying a profile overwrites only that mode's curve.
 - Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
 - Optional linked cooling and heating `climate` entities.
-- Optional outdoor temperature and outdoor humidity sensor links.
+- Automatic indoor-temperature feedback from each linked climate entity's `current_temperature`.
+- Optional outdoor temperature, indoor-temperature override, and outdoor humidity sensor links.
+- Configurable time-weighted outdoor averaging, indoor demand tolerance, and stabilization time for building thermal inertia.
 - Sensor-only mode for users who want the setpoint and active-state sensors but prefer to control HVAC with their own Home Assistant automations.
 
 ## Entities
@@ -39,7 +41,8 @@ Each config entry creates:
 - `number.<name>_cooling_off_threshold`
 - `number.<name>_heating_on_threshold`
 - `number.<name>_heating_off_threshold`
-- `select.<name>_preset`
+- `select.<name>_cooling_profile` (when cooling is configured)
+- `select.<name>_heating_profile` (when heating is configured)
 
 ## Brand Icon
 
@@ -55,9 +58,20 @@ After copying or updating these files, restart Home Assistant and hard-refresh t
 The target setpoint sensor includes these attributes:
 
 - `outdoor_temperature_used`
+- `outdoor_temperature_average`
+- `cooling_indoor_temperature_used`
+- `cooling_indoor_temperature_source`
+- `heating_indoor_temperature_used`
+- `heating_indoor_temperature_source`
+- `cooling_stabilizing`
+- `heating_stabilizing`
 - `humidity_used`
 - `active_preset`
+- `cooling_preset`
+- `heating_preset`
 - `curve_points`
+- `cooling_curve_points`
+- `heating_curve_points`
 
 ## Installation Via HACS
 
@@ -84,10 +98,11 @@ During setup:
    - heating only: select only a heating climate entity
    - heating and cooling: select both climate entities
    - no direct control: enable sensor-only mode, which creates sensors only and does not send commands to HVAC
-3. Optionally choose outdoor temperature and outdoor humidity sensors.
+3. Optionally choose outdoor temperature and outdoor humidity sensors. The linked climate entity supplies the indoor temperature automatically through `current_temperature`; select a separate indoor sensor only when you want to override that measurement.
 4. Choose whether linked HVAC must be switched off if the outdoor temperature becomes unavailable. This safety option is enabled by default.
-5. Pick a starting preset.
+5. Pick a separate starting profile for each configured operating mode.
 6. Confirm cooling and heating hysteresis thresholds for the outdoor temperature.
+7. Confirm the thermal-inertia settings: outdoor averaging window, indoor start difference, target tolerance, stabilization time, and immediate-release overshoot.
 
 Required fields:
 
@@ -99,16 +114,18 @@ Optional fields:
 - Cooling climate entity, if you only want heating or sensor-only mode
 - Heating climate entity, if you only want cooling or sensor-only mode
 - Outdoor temperature sensor
+- Indoor temperature sensor override (normally unnecessary)
 - Outdoor humidity sensor
 
 Later, open **Configure** on the integration entry to:
 
 - Change linked entities.
-- Apply a preset.
+- Apply heating and cooling profiles independently.
 - Create or edit one custom heating/cooling curve shared by both modes.
 - Edit thresholds.
+- Edit thermal inertia and indoor-demand behavior.
 
-To create a custom curve, open **Configure** and choose **Create or edit custom heating/cooling curve**. The same 3-6 points are used by both heating and cooling. Selecting `Custom` on the preset entity itself marks the active preset; Home Assistant select entities cannot open an editor screen.
+To create a custom curve, open **Configure** and choose **Create or edit custom heating/cooling curve**. The same 3-6 points are used by both heating and cooling. Each linked mode also has its own profile select: changing the cooling profile does not alter heating and vice versa. **Aggressive cooling** is offered only for cooling. Selecting `Custom` on a profile entity marks that mode as custom; Home Assistant select entities cannot open an editor screen.
 
 Thresholds are also exposed as `number` entities so they can be changed directly from dashboards and automations.
 
@@ -126,7 +143,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=0.4.0
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.0.0
 ```
 
 3. Add a manual card:
@@ -137,7 +154,7 @@ entity: sensor.living_room_ac_curve_target_setpoint
 title: Living room HVAC curve
 ```
 
-The card edits one custom curve shared by heating and cooling. Individual setpoints appear on the left and the live heating/cooling curve appears on the right. A custom curve requires at least three points.
+The card has separate **Cooling** and **Heating** tabs and saves only the selected curve. Individual setpoints appear on the left and the live curve appears on the right. A custom curve requires at least three points.
 
 The card saves changes through:
 
@@ -162,9 +179,21 @@ Behavior:
 - Between 26 C and 35 C, it interpolates between 21 C and 20 C.
 - Above 35 C, it stays flat at 20 C.
 
-## Control Behavior
+## Control Behavior and Thermal Inertia
 
-Hysteresis is based on the outdoor temperature used by the integration, not on the indoor temperature reported by a climate entity.
+The controller deliberately separates weather compensation from actual room demand:
+
+- The current outdoor temperature calculates the target setpoint from the curve.
+- A time-weighted outdoor-temperature average determines whether a new heating or cooling cycle may start. The default window is 3 hours; set it to 0 to disable averaging.
+- Once a cycle is active, the climate mode remains available while the linked device's own thermostat cycles its compressor, burner, or valve. It is released only after outdoor conditions permit that and indoor temperature has remained near target for the full stabilization period.
+- If residual heat or cold makes indoor temperature leave the target tolerance during stabilization, the timer resets. The linked thermostat can respond immediately because the climate mode was never switched off.
+- A clear overshoot past target bypasses stabilization: by default cooling switches off immediately at 1.0 C below target and heating at 1.0 C above target.
+
+Indoor temperature source order for each mode:
+
+1. Configured indoor-temperature override sensor, when available
+2. `current_temperature` from that mode's linked climate entity
+3. Existing outdoor-only hysteresis as a compatibility fallback when neither indoor value is available
 
 Outdoor temperature source order:
 
@@ -175,13 +204,15 @@ When an explicitly configured outdoor sensor is unavailable, the integration doe
 
 Cooling:
 
-- Turns on when the outdoor temperature is above the cooling on threshold.
-- Turns off when the outdoor temperature is below the cooling off threshold.
+- Starts when the averaged outdoor temperature is above the cooling-on threshold and indoor temperature is at least 0.5 C above the calculated target by default.
+- Once active, stays available despite a falling outdoor temperature. It switches off only after the outdoor average is below the cooling-off threshold and indoor temperature has continuously remained no more than 0.2 C above target for 2 hours by default.
 
 Heating:
 
-- Turns on when the outdoor temperature is below the heating on threshold.
-- Turns off when the outdoor temperature is above the heating off threshold.
+- Starts when the averaged outdoor temperature is below the heating-on threshold and indoor temperature is at least 0.5 C below the calculated target by default.
+- Once active, stays available despite a rising outdoor temperature. It switches off only after the outdoor average is above the heating-off threshold and indoor temperature has continuously remained no more than 0.2 C below target for 2 hours by default.
+
+The indoor start difference, target tolerance, stabilization time, and immediate-release overshoot are shared by heating and cooling and can be changed under **Configure > Thermal inertia and indoor demand**. Set stabilization time to 0 for immediate release once outdoor and indoor release conditions are both met. The overshoot route does not wait for the outdoor release threshold: if a 24 C cooling target produces an indoor temperature of 23 C or lower with the default 1.0 C limit, the building is treated as clearly cooled and `cool` is switched off immediately. For separate heating and cooling climate entities, each entity's own indoor measurement is used. The outdoor moving average is built while the integration is running; immediately after a restart it initially equals the current outdoor value and becomes representative as new time passes. A climate entity already in `heat` or `cool` is recognized as an active cycle after restart and receives a fresh full stabilization period.
 
 Unavailable controlled climate entities are skipped for that update cycle and logged. If no valid outdoor temperature is available, direct control is switched off as a fail-safe.
 
@@ -201,9 +232,13 @@ A curve lets the HVAC target adapt to outdoor conditions. For example, an energy
 
 Yes. Enable sensor-only mode. The integration will still create the target setpoint sensor and heating/cooling active binary sensors, but it will not call climate services or turn HVAC equipment on or off.
 
+### Why does cooling remain enabled after the outdoor temperature falls at night?
+
+This is intentional. Buildings retain heat after a hot day, and can warm up again after the compressor first stops. The controller therefore keeps the climate entity in cooling mode while its own thermostat handles these rebounds. Only after indoor temperature stays near target for the configured stabilization time, while the averaged outdoor temperature is below the cooling-off threshold, does the controller set the climate entity to `off`.
+
 ### Can presets be edited?
 
-Yes. Presets are only starting points. Editing curve points switches the active preset to custom.
+Yes. Profiles are only starting points. Cooling and heating can use different profiles. Editing shared curve points switches both profiles to custom.
 
 ## Development
 

@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.0 - 2026-08-03
+
+- Renames the confusing Rail-style aggressive cooling preset to Aggressive cooling / Agressieve koeling without changing its internal key or curve.
+- Adds independent cooling and heating profile selectors. Each selector appears only for its configured mode; Aggressive cooling remains cooling-only.
+- Keeps optional linked-entity fields clearable instead of restoring a previous value as a hard default.
+- Filters heating-only climate entities out of the cooling selector and cooling-only entities out of the heating selector.
+- Uses each linked climate entity's `current_temperature` as automatic indoor-temperature feedback.
+- Adds an optional separate indoor-temperature override for sensor-only setups or alternate room placement.
+- Uses a configurable time-weighted outdoor average to gate new heating and cooling cycles.
+- Keeps active cooling or heating available through short outdoor-temperature reversals until the indoor target is actually reached.
+- Adds configurable indoor start hysteresis and target tolerance plus diagnostic temperature-source attributes.
+- Adds a configurable stabilization period before releasing an active climate mode.
+- Resets stabilization whenever residual heat or cold makes indoor temperature drift outside the target tolerance.
+- Keeps the climate mode available during stabilization so the linked device's own thermostat can cycle again without waiting for outdoor start conditions.
+- Adds a configurable immediate-release overshoot (1.0 C by default) for cases where the building is clearly cooled below or heated above target.
+- Uses mode-specific Comfort and Eco curves so heating targets decrease logically as outdoor weather becomes milder.
+- Applies high-humidity comfort correction in the correct direction: slightly cooler for cooling and warmer for heating.
+- Resolves overlapping retained sessions on a shared heat pump in favor of its current mode instead of issuing a conflicting command.
+- Shows the heating target while a heating-only installation is idle.
+- Adds separate Cooling and Heating tabs to the visual curve editor and saves only the selected mode.
+
 ## 0.4.0
 
 - Adds a persistent Controller enabled switch to pause and resume automatic control.

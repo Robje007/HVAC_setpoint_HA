@@ -1,4 +1,4 @@
-"""Select platform for HVAC Setpoint Curve presets."""
+"""Select platform for independent HVAC Setpoint Curve presets."""
 
 from __future__ import annotations
 
@@ -8,14 +8,19 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HvacSetpointConfigEntry
 from .const import (
+    CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
-    CONF_CURVE_POINTS,
+    CONF_COOLING_PRESET,
+    CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
+    CONF_HEATING_PRESET,
     CONF_PRESET,
-    DEFAULT_HEATING_CURVE_POINTS,
+    CONF_SENSOR_ONLY,
     DOMAIN,
     PRESET_CUSTOM,
     PRESETS,
+    preset_curve,
+    preset_name,
 )
 from .entity import HvacSetpointEntity
 
@@ -25,50 +30,89 @@ async def async_setup_entry(
     entry: HvacSetpointConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up preset select entity."""
+    """Set up one preset select per available operating mode."""
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([PresetSelect(coordinator)])
+    options = coordinator.merged_options
+    entities: list[ModePresetSelect] = []
+    if options.get(CONF_COOLING_CLIMATE) or options.get(CONF_SENSOR_ONLY):
+        entities.append(
+            ModePresetSelect(
+                coordinator,
+                "cooling_preset",
+                CONF_COOLING_PRESET,
+                CONF_COOLING_CURVE_POINTS,
+                "cooling",
+                allow_aggressive=True,
+            )
+        )
+    if options.get(CONF_HEATING_CLIMATE) or options.get(CONF_SENSOR_ONLY):
+        entities.append(
+            ModePresetSelect(
+                coordinator,
+                "heating_preset",
+                CONF_HEATING_PRESET,
+                CONF_HEATING_CURVE_POINTS,
+                "heating",
+                allow_aggressive=False,
+            )
+        )
+    async_add_entities(entities)
 
 
-class PresetSelect(HvacSetpointEntity, SelectEntity):
-    """Select entity for applying built-in presets."""
+class ModePresetSelect(HvacSetpointEntity, SelectEntity):
+    """Select entity that applies a preset to one operating mode only."""
 
-    _attr_translation_key = "preset"
+    def __init__(
+        self,
+        coordinator,
+        key: str,
+        preset_key: str,
+        curve_key: str,
+        mode: str,
+        *,
+        allow_aggressive: bool,
+    ) -> None:
+        """Initialize a mode-specific preset select."""
 
-    def __init__(self, coordinator) -> None:
-        """Initialize the select."""
-
-        super().__init__(coordinator, "preset")
-        self._attr_options = [PRESETS[key]["name"] for key in PRESETS] + ["Custom"]
+        super().__init__(coordinator, key)
+        self._attr_translation_key = key
+        self._preset_key = preset_key
+        self._curve_key = curve_key
+        self._mode = mode
+        language = coordinator.hass.config.language
+        self._preset_names = {
+            preset: preset_name(preset, language)
+            for preset in PRESETS
+            if allow_aggressive or preset != "rail_aggressive_cooling"
+        }
+        self._custom_name = preset_name(PRESET_CUSTOM, language)
+        self._attr_options = [*self._preset_names.values(), self._custom_name]
 
     @property
     def current_option(self) -> str | None:
-        """Return current preset label."""
+        """Return the current mode-specific preset label."""
 
-        preset = self.coordinator.merged_options.get(CONF_PRESET, PRESET_CUSTOM)
-        if preset in PRESETS:
-            return PRESETS[preset]["name"]
-        return "Custom"
+        preset = self.coordinator.merged_options.get(
+            self._preset_key,
+            self.coordinator.merged_options.get(CONF_PRESET, PRESET_CUSTOM),
+        )
+        return self._preset_names.get(preset, self._custom_name)
 
     async def async_select_option(self, option: str) -> None:
-        """Apply a preset, overwriting curve points."""
+        """Apply a preset to this mode without changing the other mode."""
 
-        preset_key = next((key for key, preset in PRESETS.items() if preset["name"] == option), PRESET_CUSTOM)
-        new_options = {**self.coordinator.config_entry.options, CONF_PRESET: preset_key}
-        if preset_key in PRESETS:
-            new_options[CONF_CURVE_POINTS] = PRESETS[preset_key]["points"]
-            new_options[CONF_COOLING_CURVE_POINTS] = PRESETS[preset_key]["points"]
-            new_options.setdefault(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS)
-        else:
-            shared_points = self.coordinator.merged_options.get(
-                CONF_CURVE_POINTS,
-                self.coordinator.merged_options.get(CONF_COOLING_CURVE_POINTS),
-            )
-            if shared_points:
-                new_options[CONF_CURVE_POINTS] = shared_points
-                new_options[CONF_COOLING_CURVE_POINTS] = shared_points
-                new_options[CONF_HEATING_CURVE_POINTS] = shared_points
+        preset = next(
+            (key for key, name in self._preset_names.items() if name == option),
+            PRESET_CUSTOM,
+        )
+        new_options = {
+            **self.coordinator.config_entry.options,
+            self._preset_key: preset,
+            CONF_PRESET: PRESET_CUSTOM,
+        }
+        if preset in PRESETS:
+            new_options[self._curve_key] = preset_curve(preset, self._mode)
         self.coordinator.hass.config_entries.async_update_entry(
             self.coordinator.config_entry,
             options=new_options,

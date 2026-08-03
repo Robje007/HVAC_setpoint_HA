@@ -10,25 +10,38 @@
           "cooling_climate": "Climate-entiteit voor koelen (optioneel)",
           "heating_climate": "Climate-entiteit voor verwarmen (optioneel)",
           "outdoor_temp_sensor": "Buitentemperatuursensor (optioneel)",
+          "indoor_temp_sensor": "Afwijkende binnentemperatuursensor (optioneel; de climate-meting wordt automatisch gebruikt)",
           "humidity_sensor": "Luchtvochtigheidssensor buiten (optioneel)",
           "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen",
           "turn_off_when_outdoor_unavailable": "HVAC uitschakelen als buitentemperatuur niet beschikbaar is"
         }
       },
       "preset": {
-        "title": "Startcurve",
-        "description": "Een preset vult de curvepunten. Kies Leeg beginnen / custom om nu zelf 3 tot 6 punten in te voeren.",
+        "title": "Startprofielen",
+        "description": "Kies voor elke ingestelde bedrijfsmodus een eigen profiel. Agressieve koeling is alleen beschikbaar voor koeling.",
         "data": {
-          "preset": "Preset"
+          "cooling_preset": "Koelprofiel",
+          "heating_preset": "Verwarmingsprofiel"
         }
       },
       "thresholds": {
         "title": "Hysterese-drempels voor buitentemperatuur",
         "data": {
-          "cooling_on_threshold": "Koelen aan boven buitentemperatuur",
-          "cooling_off_threshold": "Koelen uit onder buitentemperatuur",
-          "heating_on_threshold": "Verwarmen aan onder buitentemperatuur",
-          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur"
+          "cooling_on_threshold": "Nieuwe koelcyclus toestaan boven gemiddelde buitentemperatuur",
+          "cooling_off_threshold": "Koelen uit onder buitentemperatuur als geen binnenwaarde beschikbaar is",
+          "heating_on_threshold": "Nieuwe verwarmingscyclus toestaan onder gemiddelde buitentemperatuur",
+          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur als geen binnenwaarde beschikbaar is"
+        }
+      },
+      "control_behavior": {
+        "title": "Thermische traagheid en binnenvraag",
+        "description": "De gemiddelde buitentemperatuur bepaalt of een nieuwe cyclus mag starten. Tijdens stabilisatie blijft de modus beschikbaar en een terugval zet de teller terug. Een duidelijke overschrijding voorbij het doel gebruikt de instelbare grens voor direct uitschakelen.",
+        "data": {
+          "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
+          "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
+          "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat",
+          "indoor_immediate_release_delta": "Overschrijding voorbij het doel voor direct uitschakelen"
         }
       },
       "custom_cooling_curve": {
@@ -108,34 +121,38 @@
         "title": "Instellingen voor de HVAC-curve",
         "menu_options": {
           "linked_entities": "Gekoppelde apparaten en sensoren",
-          "preset": "Een ingebouwde preset toepassen",
+          "preset": "Verwarmings- en koelprofielen",
           "custom_curve": "Eigen stook-/koellijn maken of aanpassen",
-          "thresholds": "Inschakel- en uitschakeltemperaturen"
+          "thresholds": "Buitentemperaturen voor starten en terugval",
+          "control_behavior": "Thermische traagheid en binnenvraag"
         },
         "menu_option_descriptions": {
-          "linked_entities": "Kies de climate-apparaten en sensoren voor buitentemperatuur en buitenluchtvochtigheid.",
-          "preset": "Vervang de huidige curve door een ingebouwde startcurve.",
+          "linked_entities": "Kies climate-apparaten en sensoren. De binnentemperatuur wordt automatisch uit elke climate-entiteit gelezen, tenzij je een afwijkende sensor kiest.",
+          "preset": "Kies per gekoppelde bedrijfsmodus een afzonderlijk ingebouwd profiel.",
           "custom_curve": "Stel één gedeelde curve met 3-6 punten in voor zowel verwarmen als koelen.",
-          "thresholds": "Bepaal wanneer verwarmen en koelen aan- en uitgaan op basis van de buitentemperatuur."
+          "thresholds": "Bepaal wanneer verwarmen en koelen mogen starten op basis van de buitentemperatuur.",
+          "control_behavior": "Demp buitenschommelingen en stel in wanneer de binnenvraag een cyclus start en stopt."
         }
       },
       "linked_entities": {
         "title": "Gekoppelde entiteiten",
-        "description": "Koelen en verwarmen zijn onafhankelijk. Je mag alleen koelen, alleen verwarmen, beide, of alleen-sensor-modus gebruiken. Alleen-sensor-modus maakt de doel-setpoint- en actief-sensoren aan zonder commando's naar climate-entiteiten te sturen.",
+        "description": "Koelen en verwarmen zijn onafhankelijk. De binnentemperatuur komt automatisch uit elke gekoppelde climate-entiteit. Kies alleen een binnensensor als afwijkende meting of voor alleen-sensor-modus.",
         "data": {
           "cooling_climate": "Climate-entiteit voor koelen (optioneel)",
           "heating_climate": "Climate-entiteit voor verwarmen (optioneel)",
           "outdoor_temp_sensor": "Buitentemperatuursensor (optioneel)",
+          "indoor_temp_sensor": "Afwijkende binnentemperatuursensor (optioneel; de climate-meting wordt automatisch gebruikt)",
           "humidity_sensor": "Luchtvochtigheidssensor buiten (optioneel)",
           "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen",
           "turn_off_when_outdoor_unavailable": "HVAC uitschakelen als buitentemperatuur niet beschikbaar is"
         }
       },
       "preset": {
-        "title": "Preset toepassen",
-        "description": "Een ingebouwde preset overschrijft de huidige curve. Kies Custom om de curve-editor te openen.",
+        "title": "Verwarmings- en koelprofielen",
+        "description": "Elk profiel wijzigt alleen de eigen curve. Agressieve koeling wordt niet aangeboden voor verwarming. Gebruik de aparte curve-editor voor eigen punten.",
         "data": {
-          "preset": "Curvepreset"
+          "cooling_preset": "Koelprofiel",
+          "heating_preset": "Verwarmingsprofiel"
         }
       },
       "custom_curve": {
@@ -198,10 +215,21 @@
       "thresholds": {
         "title": "Buitentemperatuur-drempels",
         "data": {
-          "cooling_on_threshold": "Koelen aan boven buitentemperatuur",
-          "cooling_off_threshold": "Koelen uit onder buitentemperatuur",
-          "heating_on_threshold": "Verwarmen aan onder buitentemperatuur",
-          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur"
+          "cooling_on_threshold": "Nieuwe koelcyclus toestaan boven gemiddelde buitentemperatuur",
+          "cooling_off_threshold": "Koelen uit onder buitentemperatuur als geen binnenwaarde beschikbaar is",
+          "heating_on_threshold": "Nieuwe verwarmingscyclus toestaan onder gemiddelde buitentemperatuur",
+          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur als geen binnenwaarde beschikbaar is"
+        }
+      },
+      "control_behavior": {
+        "title": "Thermische traagheid en binnenvraag",
+        "description": "De climate-modus blijft tijdens stabilisatie beschikbaar zodat de eigen thermostaat restwarmte of restkou kan opvangen. Een duidelijke overschrijding voorbij het doel slaat de teller over en schakelt direct uit.",
+        "data": {
+          "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
+          "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
+          "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat",
+          "indoor_immediate_release_delta": "Overschrijding voorbij het doel voor direct uitschakelen"
         }
       }
     },
@@ -223,27 +251,33 @@
     },
     "binary_sensor": {
       "cooling_active": {
-        "name": "Koelen actief — aan boven {on_threshold} °C, uit onder {off_threshold} °C"
+        "name": "Koelvraag actief"
       },
       "heating_active": {
-        "name": "Verwarmen actief — aan onder {on_threshold} °C, uit boven {off_threshold} °C"
+        "name": "Warmtevraag actief"
       }
     },
     "number": {
       "cooling_on_threshold": {
-        "name": "Koelen: inschakelen boven"
+        "name": "Koelen: nieuwe cyclus toestaan boven"
       },
       "cooling_off_threshold": {
-        "name": "Koelen: uitschakelen onder"
+        "name": "Koelen terugval: uitschakelen onder"
       },
       "heating_on_threshold": {
-        "name": "Verwarmen: inschakelen onder"
+        "name": "Verwarmen: nieuwe cyclus toestaan onder"
       },
       "heating_off_threshold": {
-        "name": "Verwarmen: uitschakelen boven"
+        "name": "Verwarmen terugval: uitschakelen boven"
       }
     },
     "select": {
+      "cooling_preset": {
+        "name": "Koelprofiel"
+      },
+      "heating_preset": {
+        "name": "Verwarmingsprofiel"
+      },
       "preset": {
         "name": "Curvepreset — Custom aanpassen via Configureren"
       }

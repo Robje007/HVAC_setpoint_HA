@@ -10,25 +10,38 @@
           "cooling_climate": "Cooling climate entity (optional)",
           "heating_climate": "Heating climate entity (optional)",
           "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
+          "indoor_temp_sensor": "Indoor temperature sensor override (optional; climate current temperature is used automatically)",
           "humidity_sensor": "Outdoor humidity sensor (optional)",
           "sensor_only": "Sensor-only mode: create sensors only, do not control HVAC",
           "turn_off_when_outdoor_unavailable": "Turn HVAC off when outdoor temperature is unavailable"
         }
       },
       "preset": {
-        "title": "Starting curve",
-        "description": "A preset fills the curve points. Choose Start empty / custom to enter your own 3 to 6 points now.",
+        "title": "Starting profiles",
+        "description": "Choose a separate profile for each configured operating mode. Aggressive cooling is available only for cooling.",
         "data": {
-          "preset": "Preset"
+          "cooling_preset": "Cooling profile",
+          "heating_preset": "Heating profile"
         }
       },
       "thresholds": {
         "title": "Outdoor temperature hysteresis thresholds",
         "data": {
-          "cooling_on_threshold": "Cooling turns on above outdoor temperature",
-          "cooling_off_threshold": "Cooling turns off below outdoor temperature",
-          "heating_on_threshold": "Heating turns on below outdoor temperature",
-          "heating_off_threshold": "Heating turns off above outdoor temperature"
+          "cooling_on_threshold": "Allow a new cooling cycle above averaged outdoor temperature",
+          "cooling_off_threshold": "Cooling off below outdoor temperature when no indoor value is available",
+          "heating_on_threshold": "Allow a new heating cycle below averaged outdoor temperature",
+          "heating_off_threshold": "Heating off above outdoor temperature when no indoor value is available"
+        }
+      },
+      "control_behavior": {
+        "title": "Thermal inertia and indoor demand",
+        "description": "The averaged outdoor temperature determines when a new cycle may start. Once active, the mode stays available during stabilization and rebounds reset the timer. A clear overshoot past target uses the configurable immediate switch-off limit.",
+        "data": {
+          "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
+          "indoor_start_delta": "Indoor difference from target required to start",
+          "indoor_stop_delta": "Indoor tolerance around target for stabilization",
+          "indoor_settling_hours": "Time indoor temperature must remain stable before switching the mode off",
+          "indoor_immediate_release_delta": "Overshoot past target for immediate switch-off"
         }
       },
       "custom_cooling_curve": {
@@ -108,34 +121,38 @@
         "title": "HVAC curve settings",
         "menu_options": {
           "linked_entities": "Linked entities and sensors",
-          "preset": "Apply a built-in preset",
+          "preset": "Heating and cooling profiles",
           "custom_curve": "Create or edit custom heating/cooling curve",
-          "thresholds": "Heating and cooling trigger temperatures"
+          "thresholds": "Outdoor start and fallback temperatures",
+          "control_behavior": "Thermal inertia and indoor demand"
         },
         "menu_option_descriptions": {
-          "linked_entities": "Choose the climate entities and outdoor temperature and humidity sensors.",
-          "preset": "Replace the current curve with a built-in starting curve.",
+          "linked_entities": "Choose climate entities and sensors. Indoor temperature is read automatically from each climate entity unless an override sensor is selected.",
+          "preset": "Select a separate built-in profile for each linked operating mode.",
           "custom_curve": "Set one shared 3-6 point curve for both heating and cooling.",
-          "thresholds": "Choose when heating and cooling switch on and off based on outdoor temperature."
+          "thresholds": "Choose when heating and cooling may start based on outdoor temperature.",
+          "control_behavior": "Smooth outdoor changes and configure when indoor demand starts and stops a cycle."
         }
       },
       "linked_entities": {
         "title": "Linked entities",
-        "description": "Cooling and heating are independent. You may configure only cooling, only heating, both, or sensor-only mode. Sensor-only mode creates the target setpoint and active-state sensors without sending commands to climate entities.",
+        "description": "Cooling and heating are independent. Indoor temperature comes automatically from each linked climate entity. Select an indoor sensor only to override that value or for sensor-only mode.",
         "data": {
           "cooling_climate": "Cooling climate entity (optional)",
           "heating_climate": "Heating climate entity (optional)",
           "outdoor_temp_sensor": "Outdoor temperature sensor (optional)",
+          "indoor_temp_sensor": "Indoor temperature sensor override (optional; climate current temperature is used automatically)",
           "humidity_sensor": "Outdoor humidity sensor (optional)",
           "sensor_only": "Sensor-only mode: create sensors only, do not control HVAC",
           "turn_off_when_outdoor_unavailable": "Turn HVAC off when outdoor temperature is unavailable"
         }
       },
       "preset": {
-        "title": "Apply preset",
-        "description": "Applying a built-in preset overwrites the current curve. Choose Custom to open the curve editor.",
+        "title": "Heating and cooling profiles",
+        "description": "Each profile changes only its own curve. Aggressive cooling is not offered for heating. Use the separate custom-curve editor for custom points.",
         "data": {
-          "preset": "Preset"
+          "cooling_preset": "Cooling profile",
+          "heating_preset": "Heating profile"
         }
       },
       "custom_curve": {
@@ -198,10 +215,21 @@
       "thresholds": {
         "title": "Outdoor temperature thresholds",
         "data": {
-          "cooling_on_threshold": "Cooling turns on above outdoor temperature",
-          "cooling_off_threshold": "Cooling turns off below outdoor temperature",
-          "heating_on_threshold": "Heating turns on below outdoor temperature",
-          "heating_off_threshold": "Heating turns off above outdoor temperature"
+          "cooling_on_threshold": "Allow a new cooling cycle above averaged outdoor temperature",
+          "cooling_off_threshold": "Cooling off below outdoor temperature when no indoor value is available",
+          "heating_on_threshold": "Allow a new heating cycle below averaged outdoor temperature",
+          "heating_off_threshold": "Heating off above outdoor temperature when no indoor value is available"
+        }
+      },
+      "control_behavior": {
+        "title": "Thermal inertia and indoor demand",
+        "description": "The climate mode remains available during stabilization so its thermostat can handle residual drift. A clear overshoot past target bypasses the timer and switches the mode off immediately.",
+        "data": {
+          "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
+          "indoor_start_delta": "Indoor difference from target required to start",
+          "indoor_stop_delta": "Indoor tolerance around target for stabilization",
+          "indoor_settling_hours": "Time indoor temperature must remain stable before switching the mode off",
+          "indoor_immediate_release_delta": "Overshoot past target for immediate switch-off"
         }
       }
     },
@@ -223,27 +251,33 @@
     },
     "binary_sensor": {
       "cooling_active": {
-        "name": "Cooling active — on above {on_threshold} °C, off below {off_threshold} °C"
+        "name": "Cooling demand active"
       },
       "heating_active": {
-        "name": "Heating active — on below {on_threshold} °C, off above {off_threshold} °C"
+        "name": "Heating demand active"
       }
     },
     "number": {
       "cooling_on_threshold": {
-        "name": "Cooling: switch on above"
+        "name": "Cooling: allow new cycle above"
       },
       "cooling_off_threshold": {
-        "name": "Cooling: switch off below"
+        "name": "Cooling fallback: switch off below"
       },
       "heating_on_threshold": {
-        "name": "Heating: switch on below"
+        "name": "Heating: allow new cycle below"
       },
       "heating_off_threshold": {
-        "name": "Heating: switch off above"
+        "name": "Heating fallback: switch off above"
       }
     },
     "select": {
+      "cooling_preset": {
+        "name": "Cooling profile"
+      },
+      "heating_preset": {
+        "name": "Heating profile"
+      },
       "preset": {
         "name": "Curve preset — edit Custom via Configure"
       }

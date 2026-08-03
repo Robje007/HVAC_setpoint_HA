@@ -12,9 +12,14 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hvac_setpoint_curve.const import (
     CONF_CONTROLLER_ENABLED,
+    CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_PRESET,
+    CONF_HEATING_PRESET,
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_SENSOR_ONLY,
     DOMAIN,
+    PRESET_CUSTOM,
+    PRESETS,
     SERVICE_SET_CURVE,
 )
 
@@ -53,6 +58,7 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
         state for state in hass.states.async_all("sensor") if state.attributes.get("config_entry_id") == entry.entry_id
     ]
     assert len(integration_sensors) == 1
+    assert integration_sensors[0].attributes["outdoor_temperature_average"] == 12.0
     assert entity_registry.async_get(legacy_entity.entity_id) is None
 
     controller_entity_id = entity_registry.async_get_entity_id(
@@ -73,3 +79,28 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
 
     assert entry.options[CONF_CONTROLLER_ENABLED] is False
     assert hass.states.get(controller_entity_id).state == "off"
+
+    cooling_profile_id = entity_registry.async_get_entity_id(
+        "select",
+        DOMAIN,
+        f"{entry.entry_id}_cooling_preset",
+    )
+    heating_profile_id = entity_registry.async_get_entity_id(
+        "select",
+        DOMAIN,
+        f"{entry.entry_id}_heating_preset",
+    )
+    assert cooling_profile_id is not None
+    assert heating_profile_id is not None
+
+    await hass.services.async_call(
+        "select",
+        "select_option",
+        {"entity_id": cooling_profile_id, "option": "Aggressive cooling"},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert entry.options[CONF_COOLING_PRESET] == "rail_aggressive_cooling"
+    assert entry.options[CONF_COOLING_CURVE_POINTS] == PRESETS["rail_aggressive_cooling"]["points"]
+    assert entry.options.get(CONF_HEATING_PRESET, PRESET_CUSTOM) == PRESET_CUSTOM

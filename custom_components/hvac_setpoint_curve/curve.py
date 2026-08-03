@@ -93,7 +93,12 @@ def computed_setpoint(
     points: Iterable[dict[str, float] | CurvePoint],
     outdoor_temp: float,
     humidity: float | None = None,
+    *,
+    humidity_direction: int = 1,
 ) -> float:
     """Return the final setpoint with humidity adjustment."""
 
-    return round(interpolate_setpoint(points, outdoor_temp) + humidity_offset(humidity), 1)
+    return round(
+        interpolate_setpoint(points, outdoor_temp) + humidity_direction * humidity_offset(humidity),
+        1,
+    )
