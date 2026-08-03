@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "hvac_setpoint_curve"
-VERSION: Final = "1.0.1"
+VERSION: Final = "1.0.2"
 
 PLATFORMS: Final = ["sensor", "binary_sensor", "number", "select", "switch"]
 
@@ -23,10 +23,8 @@ CONF_INDOOR_TEMP_SENSOR: Final = "indoor_temp_sensor"
 CONF_HUMIDITY_SENSOR: Final = "humidity_sensor"
 CONF_SENSOR_ONLY: Final = "sensor_only"
 CONF_CONTROLLER_ENABLED: Final = "controller_enabled"
-CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE: Final = "turn_off_when_outdoor_unavailable"
 
 DEFAULT_CONTROLLER_ENABLED: Final = True
-DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE: Final = True
 CONF_OUTDOOR_AVERAGING_HOURS: Final = "outdoor_averaging_hours"
 CONF_INDOOR_START_DELTA: Final = "indoor_start_delta"
 CONF_INDOOR_STOP_DELTA: Final = "indoor_stop_delta"

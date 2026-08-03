@@ -1,6 +1,6 @@
 [project]
 name = "hvac-setpoint-curve"
-version = "1.0.1"
+version = "1.0.2"
 description = "Home Assistant custom integration for weather-compensated HVAC setpoint curves"
 readme = "README.md"
 requires-python = ">=3.12"

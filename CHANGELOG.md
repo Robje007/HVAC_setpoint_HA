@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 - 2026-08-03
+
+- Stops sending `off` mode commands in every control path, including seasonal release and missing outdoor-temperature handling.
+- Continues updating the curve target while the linked climate entity remains in its configured mode, leaving compressor or burner cycling to its thermostat.
+- Removes the obsolete outdoor-sensor fail-safe option from setup; previously stored values are safely ignored.
+
 ## 1.0.1 - 2026-08-03
 
 - Fixes cooling and heating being switched fully off when room temperature passes the target.

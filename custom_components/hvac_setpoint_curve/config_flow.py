@@ -31,7 +31,6 @@ from .const import (
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_PRESET,
     CONF_SENSOR_ONLY,
-    CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
     DEFAULT_COOLING_CURVE_POINTS,
     DEFAULT_COOLING_OFF_THRESHOLD,
     DEFAULT_COOLING_ON_THRESHOLD,
@@ -44,7 +43,6 @@ from .const import (
     DEFAULT_INDOOR_STOP_DELTA,
     DEFAULT_OUTDOOR_AVERAGING_HOURS,
     DEFAULT_PRESET,
-    DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
     DOMAIN,
     MAX_CURVE_POINTS,
     MIN_CURVE_POINTS,
@@ -334,13 +332,6 @@ def _linked_entities_schema(hass: Any, options: dict[str, Any], *, include_name:
             _optional_entity_field(CONF_INDOOR_TEMP_SENSOR, options): _entity_selector("sensor"),
             _optional_entity_field(CONF_HUMIDITY_SENSOR, options): _entity_selector("sensor"),
             vol.Required(CONF_SENSOR_ONLY, default=options.get(CONF_SENSOR_ONLY, False)): selector.BooleanSelector(),
-            vol.Required(
-                CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                default=options.get(
-                    CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                    DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                ),
-            ): selector.BooleanSelector(),
         }
     )
     return vol.Schema(fields)

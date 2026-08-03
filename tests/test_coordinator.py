@@ -22,7 +22,6 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_INDOOR_TEMP_SENSOR,
     CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
-    CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
     DOMAIN,
 )
 from custom_components.hvac_setpoint_curve.coordinator import (
@@ -128,6 +127,26 @@ async def test_target_is_clamped_to_climate_temperature_range(hass) -> None:
     assert calls[-1].data["temperature"] == 22.0
 
 
+async def test_inactive_session_updates_target_without_turning_climate_off(hass) -> None:
+    """An inactive curve session leaves mode control to the device thermostat."""
+
+    entity_id = "climate.test_unit"
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_COOLING_CLIMATE: entity_id})
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set(entity_id, HVACMode.COOL, {"temperature": 21.0})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    await coordinator._apply_climate_control(entity_id, HVACMode.COOL, False, 24.0)
+    await hass.async_block_till_done()
+
+    assert len(calls) == 1
+    assert calls[0].service == "set_temperature"
+    assert calls[0].data["temperature"] == 24.0
+    assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
+
+
 async def test_disabled_controller_calculates_target_without_controlling_hvac(hass) -> None:
     """Pausing control keeps calculations but sends no HVAC commands."""
 
@@ -213,7 +232,7 @@ async def test_cooling_stays_active_during_cold_night_until_indoor_target_is_rea
 
 
 async def test_cooling_waits_for_stability_and_resets_timer_after_rebound(hass, monkeypatch) -> None:
-    """Residual heat resets the settling timer before cooling mode can turn off."""
+    """Residual heat resets settling before the curve session becomes inactive."""
 
     entity_id = "climate.air_conditioner"
     entry = MockConfigEntry(
@@ -264,7 +283,7 @@ async def test_cooling_waits_for_stability_and_resets_timer_after_rebound(hass, 
 
     assert data.cooling_active is False
     assert data.cooling_stabilizing is False
-    assert calls[-1].data["hvac_mode"] == HVACMode.OFF
+    assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
 
 
 async def test_cooling_thermostat_retains_mode_when_room_is_below_target(hass) -> None:
@@ -491,8 +510,8 @@ def test_outdoor_temperature_uses_time_weighted_moving_average() -> None:
     assert _time_weighted_average(samples, 15.0, 3.0, start + timedelta(hours=4)) == 15.0
 
 
-async def test_missing_explicit_outdoor_sensor_turns_control_off(hass) -> None:
-    """An unavailable configured outdoor sensor fails safe instead of using indoor temperature."""
+async def test_missing_explicit_outdoor_sensor_leaves_control_unchanged(hass) -> None:
+    """An unavailable outdoor sensor never causes an HVAC off command."""
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -512,20 +531,19 @@ async def test_missing_explicit_outdoor_sensor_turns_control_off(hass) -> None:
     data = await coordinator._async_update_data()
     await hass.async_block_till_done()
 
-    assert data.cooling_active is False
-    assert len(calls) == 1
-    assert calls[0].data["hvac_mode"] == HVACMode.OFF
+    assert data.cooling_active is True
+    assert calls == []
 
 
-async def test_missing_outdoor_sensor_can_leave_control_unchanged(hass) -> None:
-    """The configurable fail-safe can leave the current HVAC state untouched."""
+async def test_legacy_missing_outdoor_option_is_ignored_safely(hass) -> None:
+    """A stored legacy fail-safe option cannot turn HVAC equipment off."""
 
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
             CONF_COOLING_CLIMATE: "climate.heat_pump",
             CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
-            CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE: False,
+            "turn_off_when_outdoor_unavailable": True,
         },
     )
     entry.add_to_hass(hass)

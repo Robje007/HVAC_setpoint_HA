@@ -12,8 +12,7 @@
           "outdoor_temp_sensor": "Buitentemperatuursensor (optioneel)",
           "indoor_temp_sensor": "Afwijkende binnentemperatuursensor (optioneel; de climate-meting wordt automatisch gebruikt)",
           "humidity_sensor": "Luchtvochtigheidssensor buiten (optioneel)",
-          "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen",
-          "turn_off_when_outdoor_unavailable": "HVAC uitschakelen als buitentemperatuur niet beschikbaar is"
+          "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen"
         }
       },
       "preset": {
@@ -28,9 +27,9 @@
         "title": "Hysterese-drempels voor buitentemperatuur",
         "data": {
           "cooling_on_threshold": "Nieuwe koelcyclus toestaan boven gemiddelde buitentemperatuur",
-          "cooling_off_threshold": "Koelen uit onder buitentemperatuur als geen binnenwaarde beschikbaar is",
+          "cooling_off_threshold": "Koelcurvesessie eindigen onder buitentemperatuur als geen binnenwaarde beschikbaar is",
           "heating_on_threshold": "Nieuwe verwarmingscyclus toestaan onder gemiddelde buitentemperatuur",
-          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur als geen binnenwaarde beschikbaar is"
+          "heating_off_threshold": "Verwarmingscurvesessie eindigen boven buitentemperatuur als geen binnenwaarde beschikbaar is"
         }
       },
       "control_behavior": {
@@ -40,7 +39,7 @@
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
           "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
-          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat"
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de curvesessie eindigt"
         }
       },
       "custom_cooling_curve": {
@@ -142,8 +141,7 @@
           "outdoor_temp_sensor": "Buitentemperatuursensor (optioneel)",
           "indoor_temp_sensor": "Afwijkende binnentemperatuursensor (optioneel; de climate-meting wordt automatisch gebruikt)",
           "humidity_sensor": "Luchtvochtigheidssensor buiten (optioneel)",
-          "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen",
-          "turn_off_when_outdoor_unavailable": "HVAC uitschakelen als buitentemperatuur niet beschikbaar is"
+          "sensor_only": "Alleen-sensor-modus: alleen sensoren maken, HVAC niet bedienen"
         }
       },
       "preset": {
@@ -215,19 +213,19 @@
         "title": "Buitentemperatuur-drempels",
         "data": {
           "cooling_on_threshold": "Nieuwe koelcyclus toestaan boven gemiddelde buitentemperatuur",
-          "cooling_off_threshold": "Koelen uit onder buitentemperatuur als geen binnenwaarde beschikbaar is",
+          "cooling_off_threshold": "Koelcurvesessie eindigen onder buitentemperatuur als geen binnenwaarde beschikbaar is",
           "heating_on_threshold": "Nieuwe verwarmingscyclus toestaan onder gemiddelde buitentemperatuur",
-          "heating_off_threshold": "Verwarmen uit boven buitentemperatuur als geen binnenwaarde beschikbaar is"
+          "heating_off_threshold": "Verwarmingscurvesessie eindigen boven buitentemperatuur als geen binnenwaarde beschikbaar is"
         }
       },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "De climate-modus blijft beschikbaar zodat de eigen thermostaat het doel kan bewaken. De modus gaat pas uit als de buitentemperatuur seizoensmatig vrijgeven toestaat en de binnentemperatuur stabiel is gebleven.",
+        "description": "De climate-modus blijft beschikbaar zodat de eigen thermostaat het doel kan bewaken. Deze integratie schakelt de gekoppelde apparatuur nooit uit.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
           "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
-          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat"
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de curvesessie eindigt"
         }
       }
     },
@@ -260,13 +258,13 @@
         "name": "Koelen: nieuwe cyclus toestaan boven"
       },
       "cooling_off_threshold": {
-        "name": "Koelen terugval: uitschakelen onder"
+        "name": "Koelcurvesessie eindigt onder"
       },
       "heating_on_threshold": {
         "name": "Verwarmen: nieuwe cyclus toestaan onder"
       },
       "heating_off_threshold": {
-        "name": "Verwarmen terugval: uitschakelen boven"
+        "name": "Verwarmingscurvesessie eindigt boven"
       }
     },
     "select": {

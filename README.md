@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: `1.0.1`
+Version: `1.0.2`
 
 ## Features
 
@@ -99,10 +99,9 @@ During setup:
    - heating and cooling: select both climate entities
    - no direct control: enable sensor-only mode, which creates sensors only and does not send commands to HVAC
 3. Optionally choose outdoor temperature and outdoor humidity sensors. The linked climate entity supplies the indoor temperature automatically through `current_temperature`; select a separate indoor sensor only when you want to override that measurement.
-4. Choose whether linked HVAC must be switched off if the outdoor temperature becomes unavailable. This safety option is enabled by default.
-5. Pick a separate starting profile for each configured operating mode.
-6. Confirm cooling and heating hysteresis thresholds for the outdoor temperature.
-7. Confirm the thermal-inertia settings: outdoor averaging window, indoor start difference, target tolerance, and stabilization time.
+4. Pick a separate starting profile for each configured operating mode.
+5. Confirm cooling and heating hysteresis thresholds for the outdoor temperature.
+6. Confirm the thermal-inertia settings: outdoor averaging window, indoor start difference, target tolerance, and stabilization time.
 
 Required fields:
 
@@ -143,7 +142,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.0.1
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.0.2
 ```
 
 3. Add a manual card:
@@ -185,7 +184,7 @@ The controller deliberately separates weather compensation from actual room dema
 
 - The current outdoor temperature calculates the target setpoint from the curve.
 - A time-weighted outdoor-temperature average determines whether a new heating or cooling cycle may start. The default window is 3 hours; set it to 0 to disable averaging.
-- Once a cycle is active, the climate mode remains available while the linked device's own thermostat cycles its compressor, burner, or valve. It is released only after outdoor conditions permit that and indoor temperature has remained near target for the full stabilization period.
+- Once a cycle is active, the climate mode remains available while the linked device's own thermostat cycles its compressor, burner, or valve. The integration never switches the linked entity off.
 - If residual heat or cold makes indoor temperature leave the target tolerance during stabilization, the timer resets. The linked thermostat can respond immediately because the climate mode was never switched off.
 - Passing the target does not switch the climate mode off. The linked device's thermostat stops its compressor, burner, or valve itself and can restart it later to maintain the configured setpoint.
 
@@ -200,21 +199,21 @@ Outdoor temperature source order:
 1. Configured outdoor temperature sensor
 2. First available `weather.*` temperature attribute
 
-When an explicitly configured outdoor sensor is unavailable, the integration does not fall back to an indoor climate temperature. By default, direct HVAC control is switched off until a valid outdoor value returns. In **Configure > Linked entities and sensors**, this fail-safe can be disabled; the integration then leaves the current HVAC state unchanged while outdoor temperature is unavailable.
+When an explicitly configured outdoor sensor is unavailable, the integration does not fall back to an indoor climate temperature. It leaves the current HVAC mode and target unchanged until a valid outdoor value returns.
 
 Cooling:
 
 - Starts when the averaged outdoor temperature is above the cooling-on threshold and indoor temperature is at least 0.5 C above the calculated target by default.
-- Once active, stays available despite a falling outdoor temperature. It switches off only after the outdoor average is below the cooling-off threshold and indoor temperature has continuously remained no more than 0.2 C above target for 2 hours by default.
+- Once active, stays available despite a falling outdoor temperature. After the outdoor average is below the cooling-off threshold and indoor temperature has continuously remained no more than 0.2 C above target for 2 hours, the curve session becomes inactive but the climate entity remains in cooling mode.
 
 Heating:
 
 - Starts when the averaged outdoor temperature is below the heating-on threshold and indoor temperature is at least 0.5 C below the calculated target by default.
-- Once active, stays available despite a rising outdoor temperature. It switches off only after the outdoor average is above the heating-off threshold and indoor temperature has continuously remained no more than 0.2 C below target for 2 hours by default.
+- Once active, stays available despite a rising outdoor temperature. After the outdoor average is above the heating-off threshold and indoor temperature has continuously remained no more than 0.2 C below target for 2 hours, the curve session becomes inactive but the climate entity remains in heating mode.
 
 The indoor start difference, target tolerance, and stabilization time are shared by heating and cooling and can be changed under **Configure > Thermal inertia and indoor demand**. Set stabilization time to 0 for immediate seasonal release once outdoor and indoor release conditions are both met. A room temperature beyond the target never releases the mode by itself: the integration continues updating the setpoint and lets the HVAC thermostat maintain it. For separate heating and cooling climate entities, each entity's own indoor measurement is used. The outdoor moving average is built while the integration is running; immediately after a restart it initially equals the current outdoor value and becomes representative as new time passes. A climate entity already in `heat` or `cool` is recognized as an active cycle after restart and receives a fresh full stabilization period.
 
-Unavailable controlled climate entities are skipped for that update cycle and logged. If no valid outdoor temperature is available, direct control is switched off as a fail-safe.
+Unavailable controlled climate entities are skipped for that update cycle and logged. If no valid outdoor temperature is available, linked equipment is left unchanged.
 
 Before a target is sent, it is rounded to the linked climate entity's advertised `target_temp_step` (for example 0.5 or 1.0 C) and limited to its `min_temp` and `max_temp`. This applies independently to both heating and cooling entities. The target sensor continues to show the curve calculation at 0.1 C resolution.
 
@@ -234,7 +233,7 @@ Yes. Enable sensor-only mode. The integration will still create the target setpo
 
 ### Why does cooling remain enabled after the outdoor temperature falls at night?
 
-This is intentional. Buildings retain heat after a hot day, and can warm up again after the compressor first stops. The controller therefore keeps the climate entity in cooling mode while its own thermostat handles these rebounds. Only after indoor temperature stays near target for the configured stabilization time, while the averaged outdoor temperature is below the cooling-off threshold, does the controller set the climate entity to `off`.
+This is intentional. Buildings retain heat after a hot day, and can warm up again after the compressor first stops. The controller therefore keeps the climate entity in cooling mode while its own thermostat handles these rebounds. The integration updates the target temperature but never sets the climate entity to `off`.
 
 ### Can presets be edited?
 

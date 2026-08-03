@@ -40,7 +40,6 @@ from .const import (
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_PRESET,
     CONF_SENSOR_ONLY,
-    CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
     DEFAULT_CONTROLLER_ENABLED,
     DEFAULT_COOLING_CURVE_POINTS,
     DEFAULT_COOLING_OFF_THRESHOLD,
@@ -52,7 +51,6 @@ from .const import (
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
     DEFAULT_OUTDOOR_AVERAGING_HOURS,
-    DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
     DOMAIN,
 )
 from .curve import computed_setpoint
@@ -160,33 +158,12 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 active_preset=options.get(CONF_PRESET),
                 cooling_preset=options.get(CONF_COOLING_PRESET, options.get(CONF_PRESET)),
                 heating_preset=options.get(CONF_HEATING_PRESET, options.get(CONF_PRESET)),
-                cooling_active=(
-                    False
-                    if not controller_enabled
-                    or options.get(
-                        CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                        DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                    )
-                    else previous_cooling_active
-                ),
-                heating_active=(
-                    False
-                    if not controller_enabled
-                    or options.get(
-                        CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                        DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                    )
-                    else previous_heating_active
-                ),
+                cooling_active=previous_cooling_active if controller_enabled else False,
+                heating_active=previous_heating_active if controller_enabled else False,
             )
-            if controller_enabled and options.get(
-                CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-                DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
-            ):
-                await self._apply_control_states(options, data)
-            elif controller_enabled:
+            if controller_enabled:
                 _LOGGER.warning(
-                    "Leaving linked HVAC unchanged for %s because the outdoor-temperature fail-safe is disabled",
+                    "Leaving linked HVAC unchanged for %s until outdoor temperature is available again",
                     self.config_entry.title,
                 )
             return data
@@ -504,8 +481,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
 
         if cooling_entity and cooling_entity == heating_entity:
             if data.cooling_active and data.heating_active:
-                _LOGGER.error("Heating and cooling are both active for %s; turning it off", cooling_entity)
-                await self._apply_climate_control(cooling_entity, HVACMode.OFF, False, None)
+                _LOGGER.error("Heating and cooling are both active for %s; leaving it unchanged", cooling_entity)
             elif data.heating_active:
                 await self._apply_climate_control(
                     heating_entity,
@@ -521,7 +497,22 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                     data.cooling_target_setpoint,
                 )
             else:
-                await self._apply_climate_control(cooling_entity, HVACMode.OFF, False, None)
+                state = self.hass.states.get(cooling_entity)
+                current_mode = (
+                    HVACMode(state.state)
+                    if state and state.state in {HVACMode.COOL, HVACMode.HEAT}
+                    else HVACMode.COOL
+                )
+                await self._apply_climate_control(
+                    cooling_entity,
+                    current_mode,
+                    False,
+                    (
+                        data.heating_target_setpoint
+                        if current_mode == HVACMode.HEAT
+                        else data.cooling_target_setpoint
+                    ),
+                )
             return
 
         if cooling_entity:
@@ -553,10 +544,14 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             _LOGGER.warning("Skipping %s because it is unavailable", entity_id)
             return
 
-        if active and target_setpoint is not None:
+        # An inactive curve session must never power equipment off. If the
+        # linked entity is already in this mode, keep its thermostat supplied
+        # with the current curve target and let the equipment cycle itself.
+        should_set_target = target_setpoint is not None and (active or state.state == hvac_mode)
+        if should_set_target and target_setpoint is not None:
             try:
                 supported_target = _supported_target_temperature(state, target_setpoint)
-                if state.state != hvac_mode:
+                if active and state.state != hvac_mode:
                     await self.hass.services.async_call(
                         "climate",
                         SERVICE_SET_HVAC_MODE,
@@ -573,18 +568,6 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                     )
             except HomeAssistantError as err:
                 _LOGGER.error("Failed to control %s: %s", entity_id, err)
-            return
-
-        if state.state != HVACMode.OFF:
-            try:
-                await self.hass.services.async_call(
-                    "climate",
-                    SERVICE_SET_HVAC_MODE,
-                    {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: HVACMode.OFF},
-                    blocking=True,
-                )
-            except HomeAssistantError as err:
-                _LOGGER.error("Failed to turn off %s: %s", entity_id, err)
 
 
 def _state_as_float(state: State) -> float | None:
