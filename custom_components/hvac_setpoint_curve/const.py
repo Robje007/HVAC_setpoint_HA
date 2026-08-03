@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "hvac_setpoint_curve"
-VERSION: Final = "0.3.0"
+VERSION: Final = "0.3.1"
 
 PLATFORMS: Final = ["sensor", "binary_sensor", "number", "select"]
 

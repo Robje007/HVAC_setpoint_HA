@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Automatically reads each linked climate entity's supported target-temperature step.
+- Rounds heating and cooling commands to supported increments such as 0.5 or 1.0 C.
+- Limits outgoing targets to the climate entity's advertised minimum and maximum temperatures.
+- Keeps the curve and outdoor-humidity calculation visible at 0.1 C resolution while adapting only the command sent to the HVAC system.
+
 ## 0.3.0
 
 - Replaces separate custom heating and cooling curves with one shared custom heating/cooling curve.

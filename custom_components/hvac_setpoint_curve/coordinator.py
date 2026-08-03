@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from homeassistant.components.climate import ATTR_HVAC_MODE, HVACMode
@@ -47,6 +48,10 @@ _LOGGER = logging.getLogger(__name__)
 
 SERVICE_SET_HVAC_MODE = "set_hvac_mode"
 SERVICE_SET_TEMPERATURE = "set_temperature"
+
+ATTR_MIN_TEMP = "min_temp"
+ATTR_MAX_TEMP = "max_temp"
+ATTR_TARGET_TEMP_STEP = "target_temp_step"
 
 
 @dataclass(slots=True)
@@ -335,6 +340,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
 
         if active and target_setpoint is not None:
             try:
+                supported_target = _supported_target_temperature(state, target_setpoint)
                 if state.state != hvac_mode:
                     await self.hass.services.async_call(
                         "climate",
@@ -343,11 +349,11 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                         blocking=True,
                     )
                 current_target = _float_or_none(state.attributes.get(ATTR_TEMPERATURE))
-                if current_target is None or abs(current_target - target_setpoint) >= 0.05:
+                if current_target is None or abs(current_target - supported_target) >= 0.05:
                     await self.hass.services.async_call(
                         "climate",
                         SERVICE_SET_TEMPERATURE,
-                        {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: target_setpoint},
+                        {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: supported_target},
                         blocking=True,
                     )
             except HomeAssistantError as err:
@@ -381,6 +387,40 @@ def _float_or_none(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _supported_target_temperature(state: State, target_setpoint: float) -> float:
+    """Fit a target to the linked climate entity's range and temperature step."""
+
+    minimum = _float_or_none(state.attributes.get(ATTR_MIN_TEMP))
+    maximum = _float_or_none(state.attributes.get(ATTR_MAX_TEMP))
+    step = _positive_decimal_or_none(state.attributes.get(ATTR_TARGET_TEMP_STEP))
+
+    target = Decimal(str(target_setpoint))
+    if minimum is not None:
+        target = max(target, Decimal(str(minimum)))
+    if maximum is not None:
+        target = min(target, Decimal(str(maximum)))
+
+    if step is not None:
+        # Climate temperature steps are increments on the temperature scale.
+        target = (target / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
+        if minimum is not None:
+            target = max(target, Decimal(str(minimum)))
+        if maximum is not None:
+            target = min(target, Decimal(str(maximum)))
+
+    return float(target)
+
+
+def _positive_decimal_or_none(value: Any) -> Decimal | None:
+    """Parse a positive decimal value safely."""
+
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return parsed if parsed.is_finite() and parsed > 0 else None
 
 
 def _curve_for_mode(options: dict[str, Any], key: str, default: list[dict[str, float]]) -> list[dict[str, float]]:

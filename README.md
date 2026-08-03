@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: `0.3.0`
+Version: `0.3.1`
 
 ## Features
 
@@ -124,7 +124,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=0.3.0
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=0.3.1
 ```
 
 3. Add a manual card:
@@ -182,6 +182,8 @@ Heating:
 - Turns off when the outdoor temperature is above the heating off threshold.
 
 Unavailable controlled climate entities are skipped for that update cycle and logged. If no valid outdoor temperature is available, direct control is switched off as a fail-safe.
+
+Before a target is sent, it is rounded to the linked climate entity's advertised `target_temp_step` (for example 0.5 or 1.0 C) and limited to its `min_temp` and `max_temp`. This applies independently to both heating and cooling entities. The target sensor continues to show the curve calculation at 0.1 C resolution.
 
 The integration rejects reversed hysteresis ranges and requires a neutral band between heating and cooling. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update.
 

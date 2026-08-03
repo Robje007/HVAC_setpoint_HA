@@ -61,6 +61,60 @@ async def test_shared_climate_gets_no_conflicting_off_command(hass) -> None:
     assert HVACMode.OFF not in modes
 
 
+@pytest.mark.parametrize(
+    ("mode", "climate_key", "step", "calculated", "expected"),
+    [
+        (HVACMode.HEAT, CONF_HEATING_CLIMATE, 0.5, 20.3, 20.5),
+        (HVACMode.COOL, CONF_COOLING_CLIMATE, 1.0, 23.6, 24.0),
+    ],
+)
+async def test_target_matches_climate_temperature_step(hass, mode, climate_key, step, calculated, expected) -> None:
+    """Heating and cooling targets use the linked entity's supported increment."""
+
+    entity_id = "climate.test_unit"
+    entry = MockConfigEntry(domain=DOMAIN, data={climate_key: entity_id})
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set(
+        entity_id,
+        HVACMode.OFF,
+        {
+            "temperature": 19.0,
+            "target_temp_step": step,
+            "min_temp": 16.0,
+            "max_temp": 30.0,
+        },
+    )
+
+    calls = []
+    _register_climate_services(hass, calls)
+    await coordinator._apply_climate_control(entity_id, mode, True, calculated)
+    await hass.async_block_till_done()
+
+    assert calls[-1].data["temperature"] == expected
+
+
+async def test_target_is_clamped_to_climate_temperature_range(hass) -> None:
+    """A calculated target cannot exceed the linked climate entity's limits."""
+
+    entity_id = "climate.test_unit"
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_COOLING_CLIMATE: entity_id})
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set(
+        entity_id,
+        HVACMode.OFF,
+        {"temperature": 19.0, "target_temp_step": 0.5, "min_temp": 16.0, "max_temp": 22.0},
+    )
+
+    calls = []
+    _register_climate_services(hass, calls)
+    await coordinator._apply_climate_control(entity_id, HVACMode.COOL, True, 24.3)
+    await hass.async_block_till_done()
+
+    assert calls[-1].data["temperature"] == 22.0
+
+
 async def test_missing_explicit_outdoor_sensor_turns_control_off(hass) -> None:
     """An unavailable configured outdoor sensor fails safe instead of using indoor temperature."""
 
