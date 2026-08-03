@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 - 2026-08-03
+
+- Fixes cooling and heating being switched fully off when room temperature passes the target.
+- Leaves the active climate mode available so the linked device's own thermostat can maintain its setpoint and restart automatically when needed.
+- Removes the obsolete immediate-release overshoot setting from setup and options; previously stored values are safely ignored.
+
 ## 1.0.0 - 2026-08-03
 
 - Renames the confusing Rail-style aggressive cooling preset to Aggressive cooling / Agressieve koeling without changing its internal key or curve.

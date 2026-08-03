@@ -18,7 +18,6 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_COOLING_CURVE_POINTS,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
-    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_TEMP_SENSOR,
     CONF_OUTDOOR_AVERAGING_HOURS,
@@ -268,8 +267,8 @@ async def test_cooling_waits_for_stability_and_resets_timer_after_rebound(hass, 
     assert calls[-1].data["hvac_mode"] == HVACMode.OFF
 
 
-async def test_cooling_switches_off_immediately_after_clear_target_overshoot(hass) -> None:
-    """Cooling below 23 C for a 24 C target bypasses the stabilization timer."""
+async def test_cooling_thermostat_retains_mode_when_room_is_below_target(hass) -> None:
+    """The device thermostat, not this controller, cycles cooling around its target."""
 
     entity_id = "climate.air_conditioner"
     entry = MockConfigEntry(
@@ -281,7 +280,6 @@ async def test_cooling_switches_off_immediately_after_clear_target_overshoot(has
                 {"outdoor_temp": 20.0, "setpoint": 24.0},
                 {"outdoor_temp": 40.0, "setpoint": 24.0},
             ],
-            CONF_INDOOR_IMMEDIATE_RELEASE_DELTA: 1.0,
             CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
             CONF_OUTDOOR_AVERAGING_HOURS: 0,
         },
@@ -296,9 +294,41 @@ async def test_cooling_switches_off_immediately_after_clear_target_overshoot(has
     data = await coordinator._async_update_data()
     await hass.async_block_till_done()
 
-    assert data.cooling_active is False
+    assert data.cooling_active is True
     assert data.cooling_stabilizing is False
-    assert calls[-1].data["hvac_mode"] == HVACMode.OFF
+    assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
+
+
+async def test_heating_thermostat_retains_mode_when_room_is_above_target(hass) -> None:
+    """The device thermostat, not this controller, cycles heating around its target."""
+
+    entity_id = "climate.heater"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HEATING_CLIMATE: entity_id,
+            CONF_HEATING_CURVE_POINTS: [
+                {"outdoor_temp": -10.0, "setpoint": 20.0},
+                {"outdoor_temp": 10.0, "setpoint": 20.0},
+                {"outdoor_temp": 30.0, "setpoint": 20.0},
+            ],
+            CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
+            CONF_OUTDOOR_AVERAGING_HOURS: 0,
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("sensor.outdoor_temperature", 10.0)
+    hass.states.async_set(entity_id, HVACMode.HEAT, {"temperature": 20.0, "current_temperature": 21.1})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    data = await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert data.heating_active is True
+    assert data.heating_stabilizing is False
+    assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
 
 
 async def test_cooling_start_requires_outdoor_permission_and_indoor_demand(hass) -> None:

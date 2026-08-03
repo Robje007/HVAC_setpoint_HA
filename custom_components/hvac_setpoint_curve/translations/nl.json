@@ -35,13 +35,12 @@
       },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "De gemiddelde buitentemperatuur bepaalt of een nieuwe cyclus mag starten. Tijdens stabilisatie blijft de modus beschikbaar en een terugval zet de teller terug. Een duidelijke overschrijding voorbij het doel gebruikt de instelbare grens voor direct uitschakelen.",
+        "description": "De gemiddelde buitentemperatuur bepaalt of een nieuwe cyclus mag starten. Daarna blijft de modus beschikbaar zodat de eigen thermostaat het doel kan bewaken. Bij seizoensmatig vrijgeven zet een terugval de stabilisatieteller terug.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
           "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
-          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat",
-          "indoor_immediate_release_delta": "Overschrijding voorbij het doel voor direct uitschakelen"
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat"
         }
       },
       "custom_cooling_curve": {
@@ -223,13 +222,12 @@
       },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "De climate-modus blijft tijdens stabilisatie beschikbaar zodat de eigen thermostaat restwarmte of restkou kan opvangen. Een duidelijke overschrijding voorbij het doel slaat de teller over en schakelt direct uit.",
+        "description": "De climate-modus blijft beschikbaar zodat de eigen thermostaat het doel kan bewaken. De modus gaat pas uit als de buitentemperatuur seizoensmatig vrijgeven toestaat en de binnentemperatuur stabiel is gebleven.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
           "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
-          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat",
-          "indoor_immediate_release_delta": "Overschrijding voorbij het doel voor direct uitschakelen"
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de modus uitgaat"
         }
       }
     },

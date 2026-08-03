@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "hvac_setpoint_curve"
-VERSION: Final = "1.0.0"
+VERSION: Final = "1.0.1"
 
 PLATFORMS: Final = ["sensor", "binary_sensor", "number", "select", "switch"]
 
@@ -31,12 +31,10 @@ CONF_OUTDOOR_AVERAGING_HOURS: Final = "outdoor_averaging_hours"
 CONF_INDOOR_START_DELTA: Final = "indoor_start_delta"
 CONF_INDOOR_STOP_DELTA: Final = "indoor_stop_delta"
 CONF_INDOOR_SETTLING_HOURS: Final = "indoor_settling_hours"
-CONF_INDOOR_IMMEDIATE_RELEASE_DELTA: Final = "indoor_immediate_release_delta"
 DEFAULT_OUTDOOR_AVERAGING_HOURS: Final = 3.0
 DEFAULT_INDOOR_START_DELTA: Final = 0.5
 DEFAULT_INDOOR_STOP_DELTA: Final = 0.2
 DEFAULT_INDOOR_SETTLING_HOURS: Final = 2.0
-DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA: Final = 1.0
 
 CONF_COOLING_ON_THRESHOLD: Final = "cooling_on_threshold"
 CONF_COOLING_OFF_THRESHOLD: Final = "cooling_off_threshold"

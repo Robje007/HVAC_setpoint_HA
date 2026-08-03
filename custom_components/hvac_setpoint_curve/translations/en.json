@@ -35,13 +35,12 @@
       },
       "control_behavior": {
         "title": "Thermal inertia and indoor demand",
-        "description": "The averaged outdoor temperature determines when a new cycle may start. Once active, the mode stays available during stabilization and rebounds reset the timer. A clear overshoot past target uses the configurable immediate switch-off limit.",
+        "description": "The averaged outdoor temperature determines when a new cycle may start. Once active, the mode stays available so the device thermostat can maintain its target. During seasonal release, rebounds reset the stabilization timer.",
         "data": {
           "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
           "indoor_start_delta": "Indoor difference from target required to start",
           "indoor_stop_delta": "Indoor tolerance around target for stabilization",
-          "indoor_settling_hours": "Time indoor temperature must remain stable before switching the mode off",
-          "indoor_immediate_release_delta": "Overshoot past target for immediate switch-off"
+          "indoor_settling_hours": "Time indoor temperature must remain stable before switching the mode off"
         }
       },
       "custom_cooling_curve": {
@@ -223,13 +222,12 @@
       },
       "control_behavior": {
         "title": "Thermal inertia and indoor demand",
-        "description": "The climate mode remains available during stabilization so its thermostat can handle residual drift. A clear overshoot past target bypasses the timer and switches the mode off immediately.",
+        "description": "The climate mode remains available so the device thermostat can maintain its target. It is switched off only after outdoor conditions permit seasonal release and indoor temperature has remained stable.",
         "data": {
           "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
           "indoor_start_delta": "Indoor difference from target required to start",
           "indoor_stop_delta": "Indoor tolerance around target for stabilization",
-          "indoor_settling_hours": "Time indoor temperature must remain stable before switching the mode off",
-          "indoor_immediate_release_delta": "Overshoot past target for immediate switch-off"
+          "indoor_settling_hours": "Time indoor temperature must remain stable before switching the mode off"
         }
       }
     },

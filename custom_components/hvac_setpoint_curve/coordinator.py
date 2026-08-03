@@ -32,7 +32,6 @@ from .const import (
     CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_HUMIDITY_SENSOR,
-    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_START_DELTA,
     CONF_INDOOR_STOP_DELTA,
@@ -49,7 +48,6 @@ from .const import (
     DEFAULT_HEATING_CURVE_POINTS,
     DEFAULT_HEATING_OFF_THRESHOLD,
     DEFAULT_HEATING_ON_THRESHOLD,
-    DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA,
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
@@ -427,12 +425,6 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             start_delta = float(options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA))
             stop_delta = float(options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA))
             if previous_active:
-                immediate_release_delta = float(
-                    options.get(CONF_INDOOR_IMMEDIATE_RELEASE_DELTA, DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA)
-                )
-                if indoor_temp <= target_setpoint - immediate_release_delta:
-                    self._cooling_satisfied_since = None
-                    return False
                 outdoor_allows_release = outdoor_temp < float(
                     options.get(CONF_COOLING_OFF_THRESHOLD, DEFAULT_COOLING_OFF_THRESHOLD)
                 )
@@ -476,12 +468,6 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             start_delta = float(options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA))
             stop_delta = float(options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA))
             if previous_active:
-                immediate_release_delta = float(
-                    options.get(CONF_INDOOR_IMMEDIATE_RELEASE_DELTA, DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA)
-                )
-                if indoor_temp >= target_setpoint + immediate_release_delta:
-                    self._heating_satisfied_since = None
-                    return False
                 outdoor_allows_release = outdoor_temp > float(
                     options.get(CONF_HEATING_OFF_THRESHOLD, DEFAULT_HEATING_OFF_THRESHOLD)
                 )

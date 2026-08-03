@@ -50,7 +50,7 @@ class HvacSetpointCurveCard extends HTMLElement {
           targetNow: "Doel nu",
           coolingStabilizing: "Koeling stabiliseert — modus blijft beschikbaar voor restwarmte",
           heatingStabilizing: "Verwarming stabiliseert — modus blijft beschikbaar voor restkou",
-          demandHelp: "Buiten gemiddeld bepaalt of een cyclus mag starten. Tijdens stabilisatie zet restwarmte de teller terug; duidelijke afkoeling voorbij het doel schakelt direct uit.",
+          demandHelp: "Buiten gemiddeld bepaalt of een cyclus mag starten. De eigen thermostaat bewaakt daarna het doel; alleen seizoensmatig vrijgeven kan de klimaatmodus uitschakelen.",
         }
       : {
           heating: "Heating",
@@ -70,7 +70,7 @@ class HvacSetpointCurveCard extends HTMLElement {
           targetNow: "Target now",
           coolingStabilizing: "Cooling is stabilizing — mode remains available for residual heat",
           heatingStabilizing: "Heating is stabilizing — mode remains available for residual cold",
-          demandHelp: "The outdoor average permits a cycle to start. Residual drift resets stabilization; clear cooling or heating past target switches the mode off immediately.",
+          demandHelp: "The outdoor average permits a cycle to start. The device thermostat then maintains the target; only seasonal release can switch the climate mode off.",
         };
 
     const formatTemperature = (value) => {

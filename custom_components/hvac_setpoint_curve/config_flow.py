@@ -23,7 +23,6 @@ from .const import (
     CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_HUMIDITY_SENSOR,
-    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_START_DELTA,
     CONF_INDOOR_STOP_DELTA,
@@ -40,7 +39,6 @@ from .const import (
     DEFAULT_HEATING_CURVE_POINTS,
     DEFAULT_HEATING_OFF_THRESHOLD,
     DEFAULT_HEATING_ON_THRESHOLD,
-    DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA,
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
@@ -287,21 +285,6 @@ def _control_behavior_schema(options: dict[str, Any]) -> vol.Schema:
                     step=0.5,
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="h",
-                )
-            ),
-            vol.Required(
-                CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
-                default=options.get(
-                    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
-                    DEFAULT_INDOOR_IMMEDIATE_RELEASE_DELTA,
-                ),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.1,
-                    max=3,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C",
                 )
             ),
         }

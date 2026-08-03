@@ -23,7 +23,6 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
     CONF_HEATING_PRESET,
-    CONF_INDOOR_IMMEDIATE_RELEASE_DELTA,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_START_DELTA,
     CONF_INDOOR_STOP_DELTA,
@@ -113,7 +112,6 @@ async def test_config_flow_includes_thermal_inertia_step(hass) -> None:
             CONF_INDOOR_START_DELTA: 0.5,
             CONF_INDOOR_STOP_DELTA: 0.2,
             CONF_INDOOR_SETTLING_HOURS: 2.0,
-            CONF_INDOOR_IMMEDIATE_RELEASE_DELTA: 1.0,
         },
     )
 
@@ -197,7 +195,6 @@ async def test_options_flow_saves_thermal_inertia_settings(hass) -> None:
             CONF_INDOOR_START_DELTA: 0.7,
             CONF_INDOOR_STOP_DELTA: 0.3,
             CONF_INDOOR_SETTLING_HOURS: 2.5,
-            CONF_INDOOR_IMMEDIATE_RELEASE_DELTA: 1.2,
         },
     )
 
@@ -206,7 +203,6 @@ async def test_options_flow_saves_thermal_inertia_settings(hass) -> None:
     assert result["data"][CONF_INDOOR_START_DELTA] == 0.7
     assert result["data"][CONF_INDOOR_STOP_DELTA] == 0.3
     assert result["data"][CONF_INDOOR_SETTLING_HOURS] == 2.5
-    assert result["data"][CONF_INDOOR_IMMEDIATE_RELEASE_DELTA] == 1.2
 
 
 async def test_options_custom_curve_is_saved_for_both_modes(hass) -> None:
