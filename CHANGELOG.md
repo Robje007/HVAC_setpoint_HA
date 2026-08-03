@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Adds a persistent Controller enabled switch to pause and resume automatic control.
+- Keeps target-temperature calculations available while the controller is disabled.
+- Leaves linked HVAC equipment unchanged when disabling the controller so it remains available for manual control.
+- Resets heating and cooling active-state sensors while automatic control is paused.
+
 ## 0.3.1
 
 - Automatically reads each linked climate entity's supported target-temperature step.

@@ -247,6 +247,11 @@
       "preset": {
         "name": "Curvepreset — Custom aanpassen via Configureren"
       }
+    },
+    "switch": {
+      "controller_enabled": {
+        "name": "Controller ingeschakeld"
+      }
     }
   }
 }

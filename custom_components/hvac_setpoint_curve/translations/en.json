@@ -247,6 +247,11 @@
       "preset": {
         "name": "Curve preset — edit Custom via Configure"
       }
+    },
+    "switch": {
+      "controller_enabled": {
+        "name": "Controller enabled"
+      }
     }
   }
 }

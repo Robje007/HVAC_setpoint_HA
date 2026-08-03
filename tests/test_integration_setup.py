@@ -11,6 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hvac_setpoint_curve.const import (
+    CONF_CONTROLLER_ENABLED,
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_SENSOR_ONLY,
     DOMAIN,
@@ -53,3 +54,22 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
     ]
     assert len(integration_sensors) == 1
     assert entity_registry.async_get(legacy_entity.entity_id) is None
+
+    controller_entity_id = entity_registry.async_get_entity_id(
+        "switch",
+        DOMAIN,
+        f"{entry.entry_id}_controller_enabled",
+    )
+    assert controller_entity_id is not None
+    assert hass.states.get(controller_entity_id).state == "on"
+
+    await hass.services.async_call(
+        "switch",
+        "turn_off",
+        {"entity_id": controller_entity_id},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert entry.options[CONF_CONTROLLER_ENABLED] is False
+    assert hass.states.get(controller_entity_id).state == "off"

@@ -17,6 +17,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONF_CONTROLLER_ENABLED,
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
     CONF_COOLING_OFF_THRESHOLD,
@@ -31,6 +32,7 @@ from .const import (
     CONF_PRESET,
     CONF_SENSOR_ONLY,
     CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
+    DEFAULT_CONTROLLER_ENABLED,
     DEFAULT_COOLING_CURVE_POINTS,
     DEFAULT_COOLING_OFF_THRESHOLD,
     DEFAULT_COOLING_ON_THRESHOLD,
@@ -97,6 +99,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
         if self._unsub_state_change is not None:
             self._unsub_state_change()
             self._unsub_state_change = None
+        await super().async_shutdown()
 
     @property
     def merged_options(self) -> dict[str, Any]:
@@ -111,6 +114,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
         previous = self.data or HvacCurveData()
         outdoor_temp = self._get_outdoor_temperature(options)
         humidity = self._get_float_state(options.get(CONF_HUMIDITY_SENSOR))
+        controller_enabled = bool(options.get(CONF_CONTROLLER_ENABLED, DEFAULT_CONTROLLER_ENABLED))
 
         if outdoor_temp is None:
             _LOGGER.warning("No usable outdoor temperature found for %s", self.config_entry.title)
@@ -118,7 +122,8 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 active_preset=options.get(CONF_PRESET),
                 cooling_active=(
                     False
-                    if options.get(
+                    if not controller_enabled
+                    or options.get(
                         CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
                         DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
                     )
@@ -126,19 +131,20 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 ),
                 heating_active=(
                     False
-                    if options.get(
+                    if not controller_enabled
+                    or options.get(
                         CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
                         DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
                     )
                     else previous.heating_active
                 ),
             )
-            if options.get(
+            if controller_enabled and options.get(
                 CONF_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
                 DEFAULT_TURN_OFF_WHEN_OUTDOOR_UNAVAILABLE,
             ):
                 await self._apply_control_states(options, data)
-            else:
+            elif controller_enabled:
                 _LOGGER.warning(
                     "Leaving linked HVAC unchanged for %s because the outdoor-temperature fail-safe is disabled",
                     self.config_entry.title,
@@ -171,7 +177,10 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             cooling_enabled=bool(options.get(CONF_COOLING_CLIMATE) or options.get(CONF_SENSOR_ONLY)),
             heating_enabled=bool(options.get(CONF_HEATING_CLIMATE) or options.get(CONF_SENSOR_ONLY)),
         )
-        if validation_error:
+        if not controller_enabled:
+            data.cooling_active = False
+            data.heating_active = False
+        elif validation_error:
             _LOGGER.error("Not controlling HVAC for %s: %s", self.config_entry.title, validation_error)
             data.cooling_active = False
             data.heating_active = False
@@ -179,7 +188,8 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             data.cooling_active = self._cooling_active(options, outdoor_temp, previous.cooling_active)
             data.heating_active = self._heating_active(options, outdoor_temp, previous.heating_active)
 
-        await self._apply_control_states(options, data)
+        if controller_enabled:
+            await self._apply_control_states(options, data)
         if data.heating_active and data.heating_target_setpoint is not None:
             data.target_setpoint = data.heating_target_setpoint
         elif data.cooling_target_setpoint is not None:

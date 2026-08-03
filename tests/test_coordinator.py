@@ -10,6 +10,7 @@ from homeassistant.components.climate import HVACMode
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hvac_setpoint_curve.const import (
+    CONF_CONTROLLER_ENABLED,
     CONF_COOLING_CLIMATE,
     CONF_HEATING_CLIMATE,
     CONF_OUTDOOR_TEMP_SENSOR,
@@ -113,6 +114,62 @@ async def test_target_is_clamped_to_climate_temperature_range(hass) -> None:
     await hass.async_block_till_done()
 
     assert calls[-1].data["temperature"] == 22.0
+
+
+async def test_disabled_controller_calculates_target_without_controlling_hvac(hass) -> None:
+    """Pausing control keeps calculations but sends no HVAC commands."""
+
+    entity_id = "climate.test_unit"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: entity_id,
+            CONF_CONTROLLER_ENABLED: False,
+            CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    coordinator.data = HvacCurveData(cooling_active=True)
+    hass.states.async_set("sensor.outdoor_temperature", 30.0)
+    hass.states.async_set(entity_id, HVACMode.COOL, {"temperature": 21.0})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    data = await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert data.target_setpoint is not None
+    assert data.cooling_active is False
+    assert data.heating_active is False
+    assert calls == []
+
+
+async def test_disabled_controller_skips_missing_outdoor_failsafe(hass) -> None:
+    """A paused controller never turns equipment off through the outdoor fail-safe."""
+
+    entity_id = "climate.test_unit"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: entity_id,
+            CONF_CONTROLLER_ENABLED: False,
+            CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    coordinator.data = HvacCurveData(cooling_active=True)
+    hass.states.async_set("sensor.outdoor_temperature", "unavailable")
+    hass.states.async_set(entity_id, HVACMode.COOL, {"temperature": 21.0})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    data = await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert data.cooling_active is False
+    assert calls == []
 
 
 async def test_missing_explicit_outdoor_sensor_turns_control_off(hass) -> None:

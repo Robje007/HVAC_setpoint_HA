@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: `0.3.1`
+Version: `0.4.0`
 
 ## Features
 
@@ -22,6 +22,7 @@ Version: `0.3.1`
 - Built-in presets: Comfort, Eco / energy saving, and Rail-style aggressive cooling.
 - Editable live outdoor-temperature thresholds through `number` entities.
 - Preset selection through a `select` entity. Applying a preset overwrites the current curve as a starting point.
+- Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
 - Optional linked cooling and heating `climate` entities.
 - Optional outdoor temperature and outdoor humidity sensor links.
 - Sensor-only mode for users who want the setpoint and active-state sensors but prefer to control HVAC with their own Home Assistant automations.
@@ -31,6 +32,7 @@ Version: `0.3.1`
 Each config entry creates:
 
 - `sensor.<name>_target_setpoint`
+- `switch.<name>_controller_enabled`
 - `binary_sensor.<name>_cooling_active`
 - `binary_sensor.<name>_heating_active`
 - `number.<name>_cooling_on_threshold`
@@ -124,7 +126,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=0.3.1
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=0.4.0
 ```
 
 3. Add a manual card:
@@ -184,6 +186,8 @@ Heating:
 Unavailable controlled climate entities are skipped for that update cycle and logged. If no valid outdoor temperature is available, direct control is switched off as a fail-safe.
 
 Before a target is sent, it is rounded to the linked climate entity's advertised `target_temp_step` (for example 0.5 or 1.0 C) and limited to its `min_temp` and `max_temp`. This applies independently to both heating and cooling entities. The target sensor continues to show the curve calculation at 0.1 C resolution.
+
+Use the **Controller enabled** switch to pause or resume automatic HVAC control. Turning it off immediately stops this integration from sending mode and temperature commands and resets its heating/cooling active sensors, but deliberately leaves the linked HVAC equipment unchanged so it can be controlled manually. Curve and target-temperature calculations remain available, and the switch state persists across restarts.
 
 The integration rejects reversed hysteresis ranges and requires a neutral band between heating and cooling. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update.
 
