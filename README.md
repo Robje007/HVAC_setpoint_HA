@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: `1.0.2`
+Version: [`1.0.2` — initial public release](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.0.2)
 
 ## Features
 
@@ -24,6 +24,8 @@ Version: `1.0.2`
 - Separate heating and cooling profile selection through `select` entities. Applying a profile overwrites only that mode's curve.
 - Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
 - Optional linked cooling and heating `climate` entities.
+- Automatically selects `cool` or `heat` when a new session starts, then sends the calculated target temperature.
+- Never switches linked HVAC equipment to `off`; the device's own thermostat maintains the target.
 - Automatic indoor-temperature feedback from each linked climate entity's `current_temperature`.
 - Optional outdoor temperature, indoor-temperature override, and outdoor humidity sensor links.
 - Configurable time-weighted outdoor averaging, indoor demand tolerance, and stabilization time for building thermal inertia.
@@ -184,6 +186,7 @@ The controller deliberately separates weather compensation from actual room dema
 
 - The current outdoor temperature calculates the target setpoint from the curve.
 - A time-weighted outdoor-temperature average determines whether a new heating or cooling cycle may start. The default window is 3 hours; set it to 0 to disable averaging.
+- When cooling demand starts, the configured cooling entity is automatically set to `cool` before the calculated target temperature is sent. Heating demand uses the same sequence with `heat`.
 - Once a cycle is active, the climate mode remains available while the linked device's own thermostat cycles its compressor, burner, or valve. The integration never switches the linked entity off.
 - If residual heat or cold makes indoor temperature leave the target tolerance during stabilization, the timer resets. The linked thermostat can respond immediately because the climate mode was never switched off.
 - Passing the target does not switch the climate mode off. The linked device's thermostat stops its compressor, burner, or valve itself and can restart it later to maintain the configured setpoint.
