@@ -4,7 +4,7 @@ version = "1.1.0"
 description = "Home Assistant custom integration for weather-compensated HVAC setpoint curves"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "GPL-3.0-only" }
+license = "GPL-3.0-only"
 authors = [{ name = "Robin Nieuwenhuis" }]
 
 [project.optional-dependencies]
@@ -18,6 +18,10 @@ test = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["custom_components*"]
+namespaces = true
 
 [tool.ruff]
 line-length = 120

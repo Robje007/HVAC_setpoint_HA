@@ -6,6 +6,7 @@
 - Keeps shared heat-pump mode handling conflict-free and resolves overlapping interlocked demand before sending commands.
 - Makes the visual curve editor wait for saves, report success or failure, warn before discarding edits, escape configured labels, and tolerate repeated setup and invalid graph bounds.
 - Adds automated Ruff and pytest checks to GitHub Actions.
+- Declares explicit setuptools package discovery and modern SPDX license metadata so editable development installs work reliably.
 - Ignores Visual Studio workspace files and refreshes release documentation.
 
 ## 1.0.2 - 2026-08-03
