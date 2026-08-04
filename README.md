@@ -19,7 +19,7 @@ Version: [`1.1.0`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.
 - UI setup, no YAML required.
 - Multiple independent config entries for different rooms or zones.
 - Configurable 3-6 point outdoor temperature to setpoint curve.
-- Built-in presets: Comfort, Eco / energy saving, and Aggressive cooling (`Agressieve koeling` in Dutch).
+- Built-in presets: Comfort, Eco / energy saving, and Aggressive cooling.
 - Editable live outdoor-temperature thresholds through `number` entities.
 - Separate heating and cooling profile selection through `select` entities. Applying a profile overwrites only that mode's curve.
 - Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
