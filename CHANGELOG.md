@@ -8,6 +8,7 @@
 - Adds automated Ruff and pytest checks to GitHub Actions.
 - Declares explicit setuptools package discovery and modern SPDX license metadata so editable development installs work reliably.
 - Ignores Visual Studio workspace files and refreshes release documentation.
+- Removes the unreferenced standalone demo and duplicate legacy integration icon while retaining the documented brand assets.
 
 ## 1.0.2 - 2026-08-03
 
