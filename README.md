@@ -247,7 +247,7 @@ Yes. Profiles are only starting points. Cooling and heating can use different pr
 Install the Home Assistant test dependencies and run the full suite:
 
 ```bash
-python -m pip install -e ".[test]"
+python -m pip install ".[test]"
 python -m pytest
 ```
 
