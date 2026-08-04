@@ -36,6 +36,7 @@ from .const import (
     CONF_INDOOR_START_DELTA,
     CONF_INDOOR_STOP_DELTA,
     CONF_INDOOR_TEMP_SENSOR,
+    CONF_OPPOSITE_ENTITY_INTERLOCK,
     CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_PRESET,
@@ -50,6 +51,7 @@ from .const import (
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
+    DEFAULT_OPPOSITE_ENTITY_INTERLOCK,
     DEFAULT_OUTDOOR_AVERAGING_HOURS,
     DOMAIN,
 )
@@ -254,23 +256,38 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
         return data
 
     def _resolve_shared_entity_conflict(self, options: dict[str, Any], data: HvacCurveData) -> None:
-        """Keep one shared heat pump in exactly one operating mode."""
+        """Keep shared or interlocked equipment in exactly one operating mode."""
 
         entity_id = options.get(CONF_COOLING_CLIMATE)
-        if not entity_id or entity_id != options.get(CONF_HEATING_CLIMATE):
+        heating_entity = options.get(CONF_HEATING_CLIMATE)
+        interlocked = bool(options.get(CONF_OPPOSITE_ENTITY_INTERLOCK, DEFAULT_OPPOSITE_ENTITY_INTERLOCK))
+        if not entity_id or not heating_entity or (entity_id != heating_entity and not interlocked):
             return
         if not data.cooling_active or not data.heating_active:
             return
 
-        state = self.hass.states.get(entity_id)
-        if state is not None and state.state == HVACMode.HEAT:
-            data.cooling_active = False
-            self._cooling_satisfied_since = None
-            return
-        if state is not None and state.state == HVACMode.COOL:
-            data.heating_active = False
-            self._heating_satisfied_since = None
-            return
+        cooling_state = self.hass.states.get(entity_id)
+        heating_state = self.hass.states.get(heating_entity)
+        if entity_id == heating_entity:
+            if cooling_state is not None and cooling_state.state == HVACMode.HEAT:
+                data.cooling_active = False
+                self._cooling_satisfied_since = None
+                return
+            if cooling_state is not None and cooling_state.state == HVACMode.COOL:
+                data.heating_active = False
+                self._heating_satisfied_since = None
+                return
+        else:
+            cooling_running = cooling_state is not None and cooling_state.state == HVACMode.COOL
+            heating_running = heating_state is not None and heating_state.state == HVACMode.HEAT
+            if cooling_running != heating_running:
+                data.heating_active = not cooling_running
+                data.cooling_active = cooling_running
+                if cooling_running:
+                    self._heating_satisfied_since = None
+                else:
+                    self._cooling_satisfied_since = None
+                return
 
         cooling_demand = (
             data.cooling_indoor_temperature_used - data.cooling_target_setpoint
@@ -478,6 +495,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
 
         cooling_entity = options.get(CONF_COOLING_CLIMATE)
         heating_entity = options.get(CONF_HEATING_CLIMATE)
+        interlocked = bool(options.get(CONF_OPPOSITE_ENTITY_INTERLOCK, DEFAULT_OPPOSITE_ENTITY_INTERLOCK))
 
         if cooling_entity and cooling_entity == heating_entity:
             if data.cooling_active and data.heating_active:
@@ -515,20 +533,49 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 )
             return
 
-        if cooling_entity:
+        if interlocked and cooling_entity and heating_entity:
+            if data.heating_active:
+                if not await self._async_turn_off_opposite(cooling_entity):
+                    return
+            elif data.cooling_active:
+                if not await self._async_turn_off_opposite(heating_entity):
+                    return
+
+        if cooling_entity and not (interlocked and data.heating_active):
             await self._apply_climate_control(
                 cooling_entity,
                 HVACMode.COOL,
                 data.cooling_active,
                 data.cooling_target_setpoint,
             )
-        if heating_entity:
+        if heating_entity and not (interlocked and data.cooling_active):
             await self._apply_climate_control(
                 heating_entity,
                 HVACMode.HEAT,
                 data.heating_active,
                 data.heating_target_setpoint,
             )
+
+    async def _async_turn_off_opposite(self, entity_id: str) -> bool:
+        """Turn off an idle, separately linked entity before starting its opposite."""
+
+        state = self.hass.states.get(entity_id)
+        if state is None or state.state in {"unknown", "unavailable"}:
+            _LOGGER.warning("Cannot verify opposite HVAC entity %s; skipping mode change", entity_id)
+            return False
+        if state.state == HVACMode.OFF:
+            return True
+        try:
+            await self.hass.services.async_call(
+                "climate",
+                SERVICE_SET_HVAC_MODE,
+                {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: HVACMode.OFF},
+                blocking=True,
+            )
+        except HomeAssistantError as err:
+            _LOGGER.error("Failed to switch off opposite HVAC entity %s: %s", entity_id, err)
+            return False
+        return True
 
     async def _apply_climate_control(
         self,

@@ -34,12 +34,13 @@
       },
       "control_behavior": {
         "title": "Thermal inertia and indoor demand",
-        "description": "The averaged outdoor temperature determines when a new cycle may start. Once active, the mode stays available so the device thermostat can maintain its target. During seasonal release, rebounds reset the stabilization timer.",
+        "description": "The averaged outdoor temperature determines when a new cycle may start. Separate heating and cooling entities can optionally be interlocked so only one can run.",
         "data": {
           "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
           "indoor_start_delta": "Indoor difference from target required to start",
           "indoor_stop_delta": "Indoor tolerance around target for stabilization",
-          "indoor_settling_hours": "Time indoor temperature must remain stable before ending the curve session"
+          "indoor_settling_hours": "Time indoor temperature must remain stable before ending the curve session",
+          "opposite_entity_interlock": "Switch off the separate opposite HVAC entity when heating or cooling starts"
         }
       },
       "custom_cooling_curve": {
@@ -220,12 +221,13 @@
       },
       "control_behavior": {
         "title": "Thermal inertia and indoor demand",
-        "description": "The climate mode remains available so the device thermostat can maintain its target. This integration never switches the linked equipment off.",
+        "description": "A climate mode remains available for its thermostat. Enable the interlock only for two separate entities that must never heat and cool together.",
         "data": {
           "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
           "indoor_start_delta": "Indoor difference from target required to start",
           "indoor_stop_delta": "Indoor tolerance around target for stabilization",
-          "indoor_settling_hours": "Time indoor temperature must remain stable before ending the curve session"
+          "indoor_settling_hours": "Time indoor temperature must remain stable before ending the curve session",
+          "opposite_entity_interlock": "Switch off the separate opposite HVAC entity when heating or cooling starts"
         }
       }
     },

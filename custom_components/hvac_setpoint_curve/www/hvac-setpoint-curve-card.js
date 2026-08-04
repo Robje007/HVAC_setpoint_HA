@@ -8,7 +8,7 @@ class HvacSetpointCurveCard extends HTMLElement {
     this.points = [];
     this.dirty = false;
     this.dragIndex = null;
-    this.attachShadow({ mode: "open" });
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
   }
 
   set hass(hass) {
@@ -24,7 +24,7 @@ class HvacSetpointCurveCard extends HTMLElement {
     if (!this.shadowRoot || !this._hass) return;
     const state = this._hass.states[this.config.entity];
     if (!state) {
-      this.shadowRoot.innerHTML = `<ha-card><div class="wrap">Entity not found: ${this.config.entity}</div></ha-card>`;
+      this.shadowRoot.innerHTML = `<ha-card><div class="wrap">Entity not found: ${this.escapeHtml(this.config.entity)}</div></ha-card>`;
       return;
     }
 
@@ -43,6 +43,11 @@ class HvacSetpointCurveCard extends HTMLElement {
           remove: "Verwijder",
           add: "Punt toevoegen",
           saveCurve: "Gekozen curve opslaan",
+          saving: "Opslaan…",
+          saved: "Curve opgeslagen",
+          saveError: "Opslaan mislukt. Controleer de Home Assistant-logboeken.",
+          unsaved: "Niet-opgeslagen wijzigingen",
+          discard: "Niet-opgeslagen wijzigingen verwerpen?",
           outdoorNow: "Buiten nu",
           outdoorAverage: "Buiten gemiddeld",
           coolingIndoor: "Binnen koelen",
@@ -63,6 +68,11 @@ class HvacSetpointCurveCard extends HTMLElement {
           remove: "Remove",
           add: "Add point",
           saveCurve: "Save selected curve",
+          saving: "Saving…",
+          saved: "Curve saved",
+          saveError: "Save failed. Check the Home Assistant logs.",
+          unsaved: "Unsaved changes",
+          discard: "Discard unsaved changes?",
           outdoorNow: "Outdoor now",
           outdoorAverage: "Outdoor average",
           coolingIndoor: "Cooling indoor",
@@ -72,6 +82,7 @@ class HvacSetpointCurveCard extends HTMLElement {
           heatingStabilizing: "Heating is stabilizing — mode remains available for residual cold",
           demandHelp: "The outdoor average permits a curve session to start. The device thermostat then maintains the target; this integration never switches the climate mode off.",
         };
+    this.ui = ui;
 
     const formatTemperature = (value) => {
       const number = Number(value);
@@ -234,7 +245,7 @@ class HvacSetpointCurveCard extends HTMLElement {
         <div class="wrap">
           <div class="top">
             <div>
-              <h2>${this.config.title || "HVAC Setpoint Curve"}</h2>
+              <h2>${this.escapeHtml(this.config.title || "HVAC Setpoint Curve")}</h2>
               <div class="muted">${ui.outdoorCurve}</div>
             </div>
             ${
@@ -283,6 +294,7 @@ class HvacSetpointCurveCard extends HTMLElement {
                 <button data-add ${this.points.length >= 6 ? "disabled" : ""}>${ui.add}</button>
                 <button class="save" data-save ${!entryId || this.points.length < 3 ? "disabled" : ""}>${ui.saveCurve}</button>
               </div>
+              <div class="muted save-status" role="status">${this.dirty ? ui.unsaved : ""}</div>
             </div>
             <canvas width="1100" height="620" aria-label="${ui.outdoorCurve}"></canvas>
           </div>
@@ -290,13 +302,14 @@ class HvacSetpointCurveCard extends HTMLElement {
       </ha-card>
     `;
 
-    this.bindEvents(entryId);
+    this.bindEvents(entryId, ui);
     this.draw();
   }
 
-  bindEvents(entryId) {
+  bindEvents(entryId, ui) {
     this.shadowRoot.querySelectorAll("[data-mode]").forEach((button) => {
       button.addEventListener("click", () => {
+        if (this.dirty && !window.confirm(ui.discard)) return;
         this.mode = button.dataset.mode;
         this.dirty = false;
         this.render();
@@ -309,6 +322,7 @@ class HvacSetpointCurveCard extends HTMLElement {
         this.points[index][input.dataset.key] = Number(input.value);
         this.normalize(false);
         this.dirty = true;
+        this.setSaveStatus(ui.unsaved);
         this.draw();
       });
     });
@@ -330,15 +344,27 @@ class HvacSetpointCurveCard extends HTMLElement {
       this.render();
     });
 
-    this.shadowRoot.querySelector("[data-save]")?.addEventListener("click", () => {
+    this.shadowRoot.querySelector("[data-save]")?.addEventListener("click", async (event) => {
       this.normalize(true);
       if (this.points.length < 3) return;
-      this._hass.callService("hvac_setpoint_curve", "set_curve", {
-        entry_id: entryId,
-        mode: this.mode,
-        points: this.points,
-      });
-      this.dirty = false;
+      const button = event.currentTarget;
+      button.disabled = true;
+      this.setSaveStatus(ui.saving);
+      try {
+        await this._hass.callService("hvac_setpoint_curve", "set_curve", {
+          entry_id: entryId,
+          mode: this.mode,
+          points: this.points,
+        });
+        this.dirty = false;
+        this.setSaveStatus(ui.saved);
+      } catch (error) {
+        this.dirty = true;
+        this.setSaveStatus(ui.saveError);
+        console.error("Failed to save HVAC setpoint curve", error);
+      } finally {
+        button.disabled = false;
+      }
     });
 
     const canvas = this.shadowRoot.querySelector("canvas");
@@ -359,12 +385,27 @@ class HvacSetpointCurveCard extends HTMLElement {
     if (sort) this.points.sort((a, b) => a.outdoor_temp - b.outdoor_temp);
   }
 
+  setSaveStatus(message) {
+    const status = this.shadowRoot?.querySelector(".save-status");
+    if (status) status.textContent = message;
+  }
+
+  escapeHtml(value) {
+    const element = document.createElement("span");
+    element.textContent = String(value ?? "");
+    return element.innerHTML;
+  }
+
   bounds() {
+    const minX = Number(this.config.min_outdoor ?? -40);
+    const maxX = Number(this.config.max_outdoor ?? 40);
+    const minY = Number(this.config.min_setpoint ?? 15);
+    const maxY = Number(this.config.max_setpoint ?? 31);
     return {
-      minX: Number(this.config.min_outdoor ?? -40),
-      maxX: Number(this.config.max_outdoor ?? 40),
-      minY: Number(this.config.min_setpoint ?? 15),
-      maxY: Number(this.config.max_setpoint ?? 31),
+      minX: Number.isFinite(minX) && Number.isFinite(maxX) && minX < maxX ? minX : -40,
+      maxX: Number.isFinite(minX) && Number.isFinite(maxX) && minX < maxX ? maxX : 40,
+      minY: Number.isFinite(minY) && Number.isFinite(maxY) && minY < maxY ? minY : 15,
+      maxY: Number.isFinite(minY) && Number.isFinite(maxY) && minY < maxY ? maxY : 31,
       pad: 54,
     };
   }
@@ -416,6 +457,7 @@ class HvacSetpointCurveCard extends HTMLElement {
       setpoint: Math.min(b.maxY, Math.max(b.minY, point.setpoint)),
     };
     this.dirty = true;
+    this.setSaveStatus(this.ui?.unsaved || "Unsaved changes");
     this.draw();
   }
 
@@ -477,7 +519,9 @@ class HvacSetpointCurveCard extends HTMLElement {
   }
 }
 
-customElements.define("hvac-setpoint-curve-card", HvacSetpointCurveCard);
+if (!customElements.get("hvac-setpoint-curve-card")) {
+  customElements.define("hvac-setpoint-curve-card", HvacSetpointCurveCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
