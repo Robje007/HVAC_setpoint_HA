@@ -27,6 +27,7 @@ from .const import (
     CONF_INDOOR_START_DELTA,
     CONF_INDOOR_STOP_DELTA,
     CONF_INDOOR_TEMP_SENSOR,
+    CONF_OPPOSITE_ENTITY_INTERLOCK,
     CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_PRESET,
@@ -41,6 +42,7 @@ from .const import (
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
+    DEFAULT_OPPOSITE_ENTITY_INTERLOCK,
     DEFAULT_OUTDOOR_AVERAGING_HOURS,
     DEFAULT_PRESET,
     DOMAIN,
@@ -285,6 +287,10 @@ def _control_behavior_schema(options: dict[str, Any]) -> vol.Schema:
                     unit_of_measurement="h",
                 )
             ),
+            vol.Required(
+                CONF_OPPOSITE_ENTITY_INTERLOCK,
+                default=options.get(CONF_OPPOSITE_ENTITY_INTERLOCK, DEFAULT_OPPOSITE_ENTITY_INTERLOCK),
+            ): selector.BooleanSelector(),
         }
     )
 

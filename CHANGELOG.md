@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 - 2026-08-04
+
+- Adds an opt-in interlock for separate heating and cooling entities, switching the opposite entity off before a new demand starts.
+- Keeps shared heat-pump mode handling conflict-free and resolves overlapping interlocked demand before sending commands.
+- Makes the visual curve editor wait for saves, report success or failure, warn before discarding edits, escape configured labels, and tolerate repeated setup and invalid graph bounds.
+- Adds automated Ruff and pytest checks to GitHub Actions.
+- Declares explicit setuptools package discovery and modern SPDX license metadata so development installs work reliably.
+- Ignores Visual Studio workspace files and refreshes release documentation.
+- Removes the unreferenced standalone demo and duplicate legacy integration icon while retaining the documented brand assets.
+
 ## 1.0.2 - 2026-08-03
 
 - Stops sending `off` mode commands in every control path, including seasonal release and missing outdoor-temperature handling.

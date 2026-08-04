@@ -20,6 +20,7 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_HEATING_CURVE_POINTS,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_TEMP_SENSOR,
+    CONF_OPPOSITE_ENTITY_INTERLOCK,
     CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
     DOMAIN,
@@ -71,6 +72,66 @@ async def test_shared_climate_gets_no_conflicting_off_command(hass) -> None:
     modes = [call.data.get("hvac_mode") for call in calls]
     assert modes == [HVACMode.COOL, None]
     assert HVACMode.OFF not in modes
+
+
+async def test_interlock_turns_off_separate_cooling_before_heating(hass) -> None:
+    """An enabled interlock prevents separate equipment from opposing a heat demand."""
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: "climate.cooler",
+            CONF_HEATING_CLIMATE: "climate.heater",
+            CONF_OPPOSITE_ENTITY_INTERLOCK: True,
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("climate.cooler", HVACMode.COOL, {"temperature": 22.0})
+    hass.states.async_set("climate.heater", HVACMode.OFF, {"temperature": 20.0})
+    data = HvacCurveData(
+        cooling_active=False,
+        heating_active=True,
+        cooling_target_setpoint=22.0,
+        heating_target_setpoint=20.0,
+    )
+
+    calls = []
+    _register_climate_services(hass, calls)
+    await coordinator._apply_control_states(coordinator.merged_options, data)
+    await hass.async_block_till_done()
+
+    assert calls[0].data == {"entity_id": "climate.cooler", "hvac_mode": HVACMode.OFF}
+    assert calls[1].data == {"entity_id": "climate.heater", "hvac_mode": HVACMode.HEAT}
+
+
+async def test_disabled_interlock_never_turns_off_separate_entity(hass) -> None:
+    """Existing installations retain setpoint-only behavior unless interlock is enabled."""
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: "climate.cooler",
+            CONF_HEATING_CLIMATE: "climate.heater",
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("climate.cooler", HVACMode.COOL, {"temperature": 22.0})
+    hass.states.async_set("climate.heater", HVACMode.OFF, {"temperature": 20.0})
+    data = HvacCurveData(
+        cooling_active=False,
+        heating_active=True,
+        cooling_target_setpoint=22.0,
+        heating_target_setpoint=20.0,
+    )
+
+    calls = []
+    _register_climate_services(hass, calls)
+    await coordinator._apply_control_states(coordinator.merged_options, data)
+    await hass.async_block_till_done()
+
+    assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
 
 
 @pytest.mark.parametrize(

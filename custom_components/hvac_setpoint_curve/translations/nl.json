@@ -34,12 +34,13 @@
       },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "De gemiddelde buitentemperatuur bepaalt of een nieuwe cyclus mag starten. Daarna blijft de modus beschikbaar zodat de eigen thermostaat het doel kan bewaken. Bij seizoensmatig vrijgeven zet een terugval de stabilisatieteller terug.",
+        "description": "De gemiddelde buitentemperatuur bepaalt of een nieuwe cyclus mag starten. Aparte verwarmings- en koelentiteiten kunnen worden vergrendeld zodat er maar één actief is.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
           "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
-          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de curvesessie eindigt"
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de curvesessie eindigt",
+          "opposite_entity_interlock": "Schakel de aparte tegengestelde HVAC-entiteit uit wanneer verwarmen of koelen start"
         }
       },
       "custom_cooling_curve": {
@@ -220,12 +221,13 @@
       },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "De climate-modus blijft beschikbaar zodat de eigen thermostaat het doel kan bewaken. Deze integratie schakelt de gekoppelde apparatuur nooit uit.",
+        "description": "Een climate-modus blijft beschikbaar voor de eigen thermostaat. Schakel de vergrendeling alleen in bij twee aparte entiteiten die nooit tegelijk mogen verwarmen en koelen.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
           "indoor_stop_delta": "Tolerantie rond het binnendoel voor stabilisatie",
-          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de curvesessie eindigt"
+          "indoor_settling_hours": "Tijd dat binnen stabiel moet blijven voordat de curvesessie eindigt",
+          "opposite_entity_interlock": "Schakel de aparte tegengestelde HVAC-entiteit uit wanneer verwarmen of koelen start"
         }
       }
     },

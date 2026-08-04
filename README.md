@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: [`1.0.2` — initial public release](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.0.2)
+Version: [`1.1.0`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.1.0)
 
 ## Features
 
@@ -25,7 +25,7 @@ Version: [`1.0.2` — initial public release](https://github.com/Robje007/HVAC_s
 - Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
 - Optional linked cooling and heating `climate` entities.
 - Automatically selects `cool` or `heat` when a new session starts, then sends the calculated target temperature.
-- Never switches linked HVAC equipment to `off`; the device's own thermostat maintains the target.
+- Leaves linked HVAC equipment in its selected mode by default; an optional interlock can switch off a separate opposite entity.
 - Automatic indoor-temperature feedback from each linked climate entity's `current_temperature`.
 - Optional outdoor temperature, indoor-temperature override, and outdoor humidity sensor links.
 - Configurable time-weighted outdoor averaging, indoor demand tolerance, and stabilization time for building thermal inertia.
@@ -103,7 +103,7 @@ During setup:
 3. Optionally choose outdoor temperature and outdoor humidity sensors. The linked climate entity supplies the indoor temperature automatically through `current_temperature`; select a separate indoor sensor only when you want to override that measurement.
 4. Pick a separate starting profile for each configured operating mode.
 5. Confirm cooling and heating hysteresis thresholds for the outdoor temperature.
-6. Confirm the thermal-inertia settings: outdoor averaging window, indoor start difference, target tolerance, and stabilization time.
+6. Confirm the thermal-inertia settings and optionally enable the interlock for two separate HVAC entities that must never run in opposite modes.
 
 Required fields:
 
@@ -144,7 +144,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.0.2
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.1.0
 ```
 
 3. Add a manual card:
@@ -187,7 +187,7 @@ The controller deliberately separates weather compensation from actual room dema
 - The current outdoor temperature calculates the target setpoint from the curve.
 - A time-weighted outdoor-temperature average determines whether a new heating or cooling cycle may start. The default window is 3 hours; set it to 0 to disable averaging.
 - When cooling demand starts, the configured cooling entity is automatically set to `cool` before the calculated target temperature is sent. Heating demand uses the same sequence with `heat`.
-- Once a cycle is active, the climate mode remains available while the linked device's own thermostat cycles its compressor, burner, or valve. The integration never switches the linked entity off.
+- Once a cycle is active, the climate mode remains available while the linked device's own thermostat cycles its compressor, burner, or valve.
 - If residual heat or cold makes indoor temperature leave the target tolerance during stabilization, the timer resets. The linked thermostat can respond immediately because the climate mode was never switched off.
 - Passing the target does not switch the climate mode off. The linked device's thermostat stops its compressor, burner, or valve itself and can restart it later to maintain the configured setpoint.
 
@@ -222,7 +222,7 @@ Before a target is sent, it is rounded to the linked climate entity's advertised
 
 Use the **Controller enabled** switch to pause or resume automatic HVAC control. Turning it off immediately stops this integration from sending mode and temperature commands and resets its heating/cooling active sensors, but deliberately leaves the linked HVAC equipment unchanged so it can be controlled manually. Curve and target-temperature calculations remain available, and the switch state persists across restarts.
 
-The integration rejects reversed hysteresis ranges and requires a neutral band between heating and cooling. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update.
+The integration rejects reversed hysteresis ranges and requires a neutral band between heating and cooling. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update. For two separate entities, enable **Switch off the separate opposite HVAC entity** under **Configure > Thermal inertia and indoor demand**. A new heating demand then switches the cooler off first, and a new cooling demand switches the heater off first. The option defaults to off so existing installations retain their previous behavior.
 
 ## FAQ
 
@@ -247,7 +247,7 @@ Yes. Profiles are only starting points. Cooling and heating can use different pr
 Install the Home Assistant test dependencies and run the full suite:
 
 ```bash
-python -m pip install -e ".[test]"
+python -m pip install ".[test]"
 python -m pytest
 ```
 
