@@ -267,6 +267,12 @@
       },
       "heating_off_threshold": {
         "name": "Verwarmingscurvesessie eindigt boven"
+      },
+      "cooling_night_offset": {
+        "name": "Nachtmodus: koelen hoger met"
+      },
+      "heating_night_offset": {
+        "name": "Nachtmodus: verwarmen lager met"
       }
     },
     "select": {
@@ -283,6 +289,9 @@
     "switch": {
       "controller_enabled": {
         "name": "Controller ingeschakeld"
+      },
+      "night_mode": {
+        "name": "Nachtmodus"
       }
     }
   }

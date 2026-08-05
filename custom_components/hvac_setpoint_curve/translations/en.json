@@ -267,6 +267,12 @@
       },
       "heating_off_threshold": {
         "name": "Heating curve session ends above"
+      },
+      "cooling_night_offset": {
+        "name": "Night mode: cool higher by"
+      },
+      "heating_night_offset": {
+        "name": "Night mode: heat lower by"
       }
     },
     "select": {
@@ -283,6 +289,9 @@
     "switch": {
       "controller_enabled": {
         "name": "Controller enabled"
+      },
+      "night_mode": {
+        "name": "Night mode"
       }
     }
   }

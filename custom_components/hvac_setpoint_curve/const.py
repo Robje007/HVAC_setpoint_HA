@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "hvac_setpoint_curve"
-VERSION: Final = "1.1.0"
+VERSION: Final = "1.2.0"
 
 PLATFORMS: Final = ["sensor", "binary_sensor", "number", "select", "switch"]
 
@@ -23,9 +23,15 @@ CONF_INDOOR_TEMP_SENSOR: Final = "indoor_temp_sensor"
 CONF_HUMIDITY_SENSOR: Final = "humidity_sensor"
 CONF_SENSOR_ONLY: Final = "sensor_only"
 CONF_CONTROLLER_ENABLED: Final = "controller_enabled"
+CONF_NIGHT_MODE: Final = "night_mode"
+CONF_COOLING_NIGHT_OFFSET: Final = "cooling_night_offset"
+CONF_HEATING_NIGHT_OFFSET: Final = "heating_night_offset"
 CONF_OPPOSITE_ENTITY_INTERLOCK: Final = "opposite_entity_interlock"
 
 DEFAULT_CONTROLLER_ENABLED: Final = True
+DEFAULT_NIGHT_MODE: Final = False
+DEFAULT_COOLING_NIGHT_OFFSET: Final = 1.0
+DEFAULT_HEATING_NIGHT_OFFSET: Final = -1.5
 DEFAULT_OPPOSITE_ENTITY_INTERLOCK: Final = False
 CONF_OUTDOOR_AVERAGING_HOURS: Final = "outdoor_averaging_hours"
 CONF_INDOOR_START_DELTA: Final = "indoor_start_delta"
@@ -57,6 +63,9 @@ ATTR_CURVE_POINTS: Final = "curve_points"
 ATTR_COOLING_CURVE_POINTS: Final = "cooling_curve_points"
 ATTR_HEATING_CURVE_POINTS: Final = "heating_curve_points"
 ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
+ATTR_NIGHT_MODE: Final = "night_mode"
+ATTR_COOLING_CURVE_SETPOINT: Final = "cooling_curve_setpoint"
+ATTR_HEATING_CURVE_SETPOINT: Final = "heating_curve_setpoint"
 
 PRESET_CUSTOM: Final = "custom"
 PRESET_EMPTY: Final = "empty"
