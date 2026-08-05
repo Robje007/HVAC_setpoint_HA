@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 - 2026-08-05
+
+- Adds an automation-friendly night-mode switch with live number controls for independent heating and cooling target corrections.
+- Exposes the unadjusted curve targets alongside the effective night-adjusted targets.
+- Reuses one option-backed switch implementation for controller and night mode to keep the integration simpler.
+
 ## 1.1.0 - 2026-08-04
 
 - Adds an opt-in interlock for separate heating and cooling entities, switching the opposite entity off before a new demand starts.

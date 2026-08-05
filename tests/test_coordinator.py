@@ -16,10 +16,13 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_CONTROLLER_ENABLED,
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_NIGHT_OFFSET,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
+    CONF_HEATING_NIGHT_OFFSET,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_TEMP_SENSOR,
+    CONF_NIGHT_MODE,
     CONF_OPPOSITE_ENTITY_INTERLOCK,
     CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
@@ -488,6 +491,45 @@ async def test_heating_only_entry_exposes_heating_target_while_idle(hass) -> Non
     assert data.heating_active is False
     assert data.target_setpoint == data.heating_target_setpoint
     assert data.target_setpoint != data.cooling_target_setpoint
+
+
+async def test_night_mode_applies_independent_offsets_after_curve_calculation(hass) -> None:
+    """Night mode adjusts effective targets without changing the underlying curves."""
+
+    constant_curve = [
+        {"outdoor_temp": 0.0, "setpoint": 22.0},
+        {"outdoor_temp": 20.0, "setpoint": 22.0},
+        {"outdoor_temp": 40.0, "setpoint": 22.0},
+    ]
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: "climate.cooler",
+            CONF_HEATING_CLIMATE: "climate.heater",
+            CONF_COOLING_CURVE_POINTS: constant_curve,
+            CONF_HEATING_CURVE_POINTS: constant_curve,
+            CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
+            CONF_OUTDOOR_AVERAGING_HOURS: 0,
+            CONF_NIGHT_MODE: True,
+            CONF_COOLING_NIGHT_OFFSET: 1.0,
+            CONF_HEATING_NIGHT_OFFSET: -1.5,
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("sensor.outdoor_temperature", 20.0)
+    hass.states.async_set("climate.cooler", HVACMode.OFF, {"current_temperature": 22.0})
+    hass.states.async_set("climate.heater", HVACMode.OFF, {"current_temperature": 22.0})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    data = await coordinator._async_update_data()
+
+    assert data.night_mode is True
+    assert data.cooling_curve_setpoint == 22.0
+    assert data.heating_curve_setpoint == 22.0
+    assert data.cooling_target_setpoint == 23.0
+    assert data.heating_target_setpoint == 20.5
 
 
 async def test_shared_heat_pump_keeps_current_mode_when_sessions_overlap(hass) -> None:

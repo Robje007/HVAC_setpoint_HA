@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: [`1.1.0`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.1.0)
+Version: [`1.2.0`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.2.0)
 
 ## Features
 
@@ -23,6 +23,7 @@ Version: [`1.1.0`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.
 - Editable live outdoor-temperature thresholds through `number` entities.
 - Separate heating and cooling profile selection through `select` entities. Applying a profile overwrites only that mode's curve.
 - Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
+- Automation-friendly night-mode switch with separate heating and cooling target corrections.
 - Optional linked cooling and heating `climate` entities.
 - Automatically selects `cool` or `heat` when a new session starts, then sends the calculated target temperature.
 - Leaves linked HVAC equipment in its selected mode by default; an optional interlock can switch off a separate opposite entity.
@@ -144,7 +145,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.1.0
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.2.0
 ```
 
 3. Add a manual card:
@@ -221,6 +222,8 @@ Unavailable controlled climate entities are skipped for that update cycle and lo
 Before a target is sent, it is rounded to the linked climate entity's advertised `target_temp_step` (for example 0.5 or 1.0 C) and limited to its `min_temp` and `max_temp`. This applies independently to both heating and cooling entities. The target sensor continues to show the curve calculation at 0.1 C resolution.
 
 Use the **Controller enabled** switch to pause or resume automatic HVAC control. Turning it off immediately stops this integration from sending mode and temperature commands and resets its heating/cooling active sensors, but deliberately leaves the linked HVAC equipment unchanged so it can be controlled manually. Curve and target-temperature calculations remain available, and the switch state persists across restarts.
+
+Use the **Night mode** switch from a Home Assistant schedule, sleep routine, or presence automation. The number entities **Night mode: heat lower by** (default `1.5 C`) and **Night mode: cool higher by** (default `1.0 C`) can be adjusted directly beside the switch. The corrections are applied after the outdoor curve and humidity correction, while the original curve targets remain available as sensor attributes. Setting one to `0` disables the night adjustment for that mode.
 
 The integration rejects reversed hysteresis ranges and requires a neutral band between heating and cooling. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update. For two separate entities, enable **Switch off the separate opposite HVAC entity** under **Configure > Thermal inertia and indoor demand**. A new heating demand then switches the cooler off first, and a new cooling demand switches the heater off first. The option defaults to off so existing installations retain their previous behavior.
 

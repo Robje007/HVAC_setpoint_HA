@@ -22,12 +22,14 @@ from .const import (
     CONF_CONTROLLER_ENABLED,
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_NIGHT_OFFSET,
     CONF_COOLING_OFF_THRESHOLD,
     CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
     CONF_CURVE_POINTS,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
+    CONF_HEATING_NIGHT_OFFSET,
     CONF_HEATING_OFF_THRESHOLD,
     CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
@@ -36,6 +38,7 @@ from .const import (
     CONF_INDOOR_START_DELTA,
     CONF_INDOOR_STOP_DELTA,
     CONF_INDOOR_TEMP_SENSOR,
+    CONF_NIGHT_MODE,
     CONF_OPPOSITE_ENTITY_INTERLOCK,
     CONF_OUTDOOR_AVERAGING_HOURS,
     CONF_OUTDOOR_TEMP_SENSOR,
@@ -43,14 +46,17 @@ from .const import (
     CONF_SENSOR_ONLY,
     DEFAULT_CONTROLLER_ENABLED,
     DEFAULT_COOLING_CURVE_POINTS,
+    DEFAULT_COOLING_NIGHT_OFFSET,
     DEFAULT_COOLING_OFF_THRESHOLD,
     DEFAULT_COOLING_ON_THRESHOLD,
     DEFAULT_HEATING_CURVE_POINTS,
+    DEFAULT_HEATING_NIGHT_OFFSET,
     DEFAULT_HEATING_OFF_THRESHOLD,
     DEFAULT_HEATING_ON_THRESHOLD,
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
+    DEFAULT_NIGHT_MODE,
     DEFAULT_OPPOSITE_ENTITY_INTERLOCK,
     DEFAULT_OUTDOOR_AVERAGING_HOURS,
     DOMAIN,
@@ -77,6 +83,9 @@ class HvacCurveData:
     target_setpoint: float | None = None
     cooling_target_setpoint: float | None = None
     heating_target_setpoint: float | None = None
+    cooling_curve_setpoint: float | None = None
+    heating_curve_setpoint: float | None = None
+    night_mode: bool = False
     outdoor_temperature_used: float | None = None
     outdoor_temperature_average: float | None = None
     humidity_used: float | None = None
@@ -160,6 +169,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 active_preset=options.get(CONF_PRESET),
                 cooling_preset=options.get(CONF_COOLING_PRESET, options.get(CONF_PRESET)),
                 heating_preset=options.get(CONF_HEATING_PRESET, options.get(CONF_PRESET)),
+                night_mode=bool(options.get(CONF_NIGHT_MODE, DEFAULT_NIGHT_MODE)),
                 cooling_active=previous_cooling_active if controller_enabled else False,
                 heating_active=previous_heating_active if controller_enabled else False,
             )
@@ -170,16 +180,27 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 )
             return data
 
-        cooling_target_setpoint = computed_setpoint(
+        cooling_curve_setpoint = computed_setpoint(
             _curve_for_mode(options, CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS),
             outdoor_temp,
             humidity,
             humidity_direction=-1,
         )
-        heating_target_setpoint = computed_setpoint(
+        heating_curve_setpoint = computed_setpoint(
             _curve_for_mode(options, CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS),
             outdoor_temp,
             humidity,
+        )
+        night_mode = bool(options.get(CONF_NIGHT_MODE, DEFAULT_NIGHT_MODE))
+        cooling_target_setpoint = _apply_night_offset(
+            cooling_curve_setpoint,
+            night_mode,
+            options.get(CONF_COOLING_NIGHT_OFFSET, DEFAULT_COOLING_NIGHT_OFFSET),
+        )
+        heating_target_setpoint = _apply_night_offset(
+            heating_curve_setpoint,
+            night_mode,
+            options.get(CONF_HEATING_NIGHT_OFFSET, DEFAULT_HEATING_NIGHT_OFFSET),
         )
         now = dt_util.utcnow()
         outdoor_average = _time_weighted_average(
@@ -194,6 +215,9 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             target_setpoint=cooling_target_setpoint,
             cooling_target_setpoint=cooling_target_setpoint,
             heating_target_setpoint=heating_target_setpoint,
+            cooling_curve_setpoint=cooling_curve_setpoint,
+            heating_curve_setpoint=heating_curve_setpoint,
+            night_mode=night_mode,
             outdoor_temperature_used=outdoor_temp,
             outdoor_temperature_average=outdoor_average,
             humidity_used=humidity,
@@ -710,3 +734,9 @@ def _curve_for_mode(options: dict[str, Any], key: str, default: list[dict[str, f
     """Return a mode-specific curve, migrating legacy shared curves as a fallback."""
 
     return options.get(key) or options.get(CONF_CURVE_POINTS) or default
+
+
+def _apply_night_offset(setpoint: float, enabled: bool, offset: Any) -> float:
+    """Apply a configured night correction while retaining sensor precision."""
+
+    return round(setpoint + (float(offset) if enabled else 0.0), 1)

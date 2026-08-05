@@ -13,8 +13,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.hvac_setpoint_curve.const import (
     CONF_CONTROLLER_ENABLED,
     CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_NIGHT_OFFSET,
     CONF_COOLING_PRESET,
     CONF_HEATING_PRESET,
+    CONF_HEATING_NIGHT_OFFSET,
+    CONF_NIGHT_MODE,
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_SENSOR_ONLY,
     DOMAIN,
@@ -79,6 +82,57 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
 
     assert entry.options[CONF_CONTROLLER_ENABLED] is False
     assert hass.states.get(controller_entity_id).state == "off"
+
+    night_mode_entity_id = entity_registry.async_get_entity_id(
+        "switch",
+        DOMAIN,
+        f"{entry.entry_id}_night_mode",
+    )
+    assert night_mode_entity_id is not None
+    assert hass.states.get(night_mode_entity_id).state == "off"
+
+    await hass.services.async_call(
+        "switch",
+        "turn_on",
+        {"entity_id": night_mode_entity_id},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert entry.options[CONF_NIGHT_MODE] is True
+    assert hass.states.get(night_mode_entity_id).state == "on"
+
+    cooling_night_offset_id = entity_registry.async_get_entity_id(
+        "number",
+        DOMAIN,
+        f"{entry.entry_id}_cooling_night_offset",
+    )
+    heating_night_offset_id = entity_registry.async_get_entity_id(
+        "number",
+        DOMAIN,
+        f"{entry.entry_id}_heating_night_offset",
+    )
+    assert cooling_night_offset_id is not None
+    assert heating_night_offset_id is not None
+    assert hass.states.get(cooling_night_offset_id).state == "1.0"
+    assert hass.states.get(heating_night_offset_id).state == "1.5"
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": cooling_night_offset_id, "value": 2.0},
+        blocking=True,
+    )
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": heating_night_offset_id, "value": 2.5},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert entry.options[CONF_COOLING_NIGHT_OFFSET] == 2.0
+    assert entry.options[CONF_HEATING_NIGHT_OFFSET] == -2.5
 
     cooling_profile_id = entity_registry.async_get_entity_id(
         "select",
