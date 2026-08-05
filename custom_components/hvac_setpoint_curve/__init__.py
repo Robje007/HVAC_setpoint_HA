@@ -26,6 +26,7 @@ from .const import (
     PLATFORMS,
     PRESET_CUSTOM,
     SERVICE_SET_CURVE,
+    SERVICE_SET_PROFILE,
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -102,6 +103,54 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             }
         ),
     )
+
+    async def _async_set_profile(call: Any) -> None:
+        entry_id = call.data[CONF_ENTRY_ID]
+        entry = next((item for item in hass.config_entries.async_entries(DOMAIN) if item.entry_id == entry_id), None)
+        if entry is None:
+            raise ValueError(f"No HVAC Setpoint Curve entry found for entry_id {entry_id}")
+        heating_changeover = float(call.data["heating_changeover"])
+        cooling_changeover = float(call.data["cooling_changeover"])
+        if heating_changeover >= cooling_changeover:
+            raise ValueError("Heating changeover must be lower than cooling changeover")
+        heating_points = parse_curve_points(call.data["heating_points"])
+        cooling_points = parse_curve_points(call.data["cooling_points"])
+        if len(heating_points) != len(cooling_points) or any(
+            heating.outdoor_temp != cooling.outdoor_temp or heating.setpoint >= cooling.setpoint
+            for heating, cooling in zip(heating_points, cooling_points, strict=True)
+        ):
+            raise ValueError("Every heating target must be lower than its cooling target")
+        options = {
+            **entry.options,
+            CONF_PRESET: PRESET_CUSTOM,
+            CONF_COOLING_PRESET: PRESET_CUSTOM,
+            CONF_HEATING_PRESET: PRESET_CUSTOM,
+            CONF_HEATING_CURVE_POINTS: serialize_curve_points(heating_points),
+            CONF_COOLING_CURVE_POINTS: serialize_curve_points(cooling_points),
+            "heating_on_threshold": heating_changeover,
+            "heating_off_threshold": heating_changeover + 1.5,
+            "cooling_on_threshold": cooling_changeover,
+            "cooling_off_threshold": cooling_changeover - 1.5,
+        }
+        hass.config_entries.async_update_entry(entry, options=options)
+        coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+        if coordinator is not None:
+            await coordinator.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_PROFILE,
+        _async_set_profile,
+        schema=vol.Schema(
+            {
+                vol.Required(CONF_ENTRY_ID): str,
+                vol.Required("heating_points"): list,
+                vol.Required("cooling_points"): list,
+                vol.Required("heating_changeover"): vol.Coerce(float),
+                vol.Required("cooling_changeover"): vol.Coerce(float),
+            }
+        ),
+    )
     return True
 
 
@@ -122,18 +171,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: HvacSetpointConfigEntry)
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
 
-    legacy_preset_entity = entity_registry.async_get_entity_id(
-        "select",
-        DOMAIN,
-        f"{entry.entry_id}_preset",
-    )
-    if legacy_preset_entity is not None:
-        options = {**entry.data, **entry.options}
-        replacement = "cooling_preset" if options.get("cooling_climate") else "heating_preset"
-        entity_registry.async_update_entity(
-            legacy_preset_entity,
-            new_unique_id=f"{entry.entry_id}_{replacement}",
-        )
+    for legacy_key in ("cooling_off_threshold", "heating_off_threshold"):
+        entity_id = entity_registry.async_get_entity_id("number", DOMAIN, f"{entry.entry_id}_{legacy_key}")
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+    profile_entities = [
+        entity_registry.async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_{key}")
+        for key in ("building_profile", "preset", "cooling_preset", "heating_preset")
+    ]
+    keeper = next((entity_id for entity_id in profile_entities if entity_id is not None), None)
+    if keeper is not None:
+        entity_registry.async_update_entity(keeper, new_unique_id=f"{entry.entry_id}_building_profile")
+        for entity_id in profile_entities:
+            if entity_id is not None and entity_id != keeper:
+                entity_registry.async_remove(entity_id)
 
     coordinator = HvacSetpointCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -197,6 +249,17 @@ async def async_migrate_entry(hass: HomeAssistant, entry: HvacSetpointConfigEntr
         options.setdefault(CONF_COOLING_PRESET, legacy_preset)
         options.setdefault(CONF_HEATING_PRESET, heating_preset)
         hass.config_entries.async_update_entry(entry, data=data, options=options, version=4)
+
+    if old_version < 5:
+        cooling_preset = options.get(CONF_COOLING_PRESET, data.get(CONF_COOLING_PRESET))
+        heating_preset = options.get(CONF_HEATING_PRESET, data.get(CONF_HEATING_PRESET))
+        shared_preset = cooling_preset if cooling_preset == heating_preset else None
+        if shared_preset not in {"comfort", "eco"}:
+            shared_preset = PRESET_CUSTOM
+        options[CONF_PRESET] = shared_preset
+        options[CONF_COOLING_PRESET] = shared_preset
+        options[CONF_HEATING_PRESET] = shared_preset
+        hass.config_entries.async_update_entry(entry, data=data, options=options, version=5)
 
     return True
 

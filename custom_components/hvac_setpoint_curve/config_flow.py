@@ -16,7 +16,6 @@ from .const import (
     CONF_COOLING_OFF_THRESHOLD,
     CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
-    CONF_CURVE_POINTS,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
     CONF_HEATING_OFF_THRESHOLD,
@@ -33,11 +32,8 @@ from .const import (
     CONF_PRESET,
     CONF_SENSOR_ONLY,
     DEFAULT_COOLING_CURVE_POINTS,
-    DEFAULT_COOLING_OFF_THRESHOLD,
     DEFAULT_COOLING_ON_THRESHOLD,
-    DEFAULT_CURVE_POINTS,
     DEFAULT_HEATING_CURVE_POINTS,
-    DEFAULT_HEATING_OFF_THRESHOLD,
     DEFAULT_HEATING_ON_THRESHOLD,
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
@@ -55,13 +51,11 @@ from .const import (
     SETPOINT_MIN,
     TEMPERATURE_MAX,
     TEMPERATURE_MIN,
-    THRESHOLD_MAX,
-    THRESHOLD_MIN,
+    preset_changeovers,
     preset_curve,
     preset_name,
 )
 from .curve import CurvePoint, parse_curve_points, serialize_curve_points
-from .validation import threshold_error
 
 _LINKED_ENTITY_KEYS = (
     CONF_COOLING_CLIMATE,
@@ -97,68 +91,50 @@ def _climate_selector(hass: Any, hvac_mode: str) -> selector.EntitySelector:
 def _preset_options(language: str, include_empty: bool | None = True) -> list[dict[str, str]]:
     """Return select options for presets."""
 
-    options = [{"value": key, "label": preset_name(key, language)} for key in PRESETS]
-    if include_empty:
-        options.append({"value": PRESET_EMPTY, "label": preset_name(PRESET_EMPTY, language)})
-    elif include_empty is False:
-        options.append({"value": PRESET_CUSTOM, "label": preset_name(PRESET_CUSTOM, language)})
+    options = [
+        {"value": key, "label": preset_name(key, language)}
+        for key in ("comfort", "eco")
+    ]
+    options.append({"value": PRESET_CUSTOM, "label": preset_name(PRESET_CUSTOM, language)})
     return options
 
 
 def _mode_preset_schema(hass: Any, options: dict[str, Any], *, include_empty: bool | None) -> vol.Schema:
-    """Build independent preset fields for the configured operating modes."""
+    """Build one understandable building-profile field."""
 
-    fields: dict[vol.Marker, Any] = {}
-    legacy_preset = options.get(CONF_PRESET, DEFAULT_PRESET)
-    if _cooling_enabled(options):
-        fields[
-            vol.Required(
-                CONF_COOLING_PRESET,
-                default=options.get(CONF_COOLING_PRESET, legacy_preset),
+    current = options.get(CONF_PRESET, DEFAULT_PRESET)
+    if current not in {"comfort", "eco", PRESET_CUSTOM}:
+        current = PRESET_CUSTOM
+    return vol.Schema(
+        {
+            vol.Required(CONF_PRESET, default=current): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=_preset_options(hass.config.language, include_empty=include_empty),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             )
-        ] = selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=_preset_options(hass.config.language, include_empty=include_empty),
-                mode=selector.SelectSelectorMode.DROPDOWN,
-            )
-        )
-    if _heating_enabled(options):
-        heating_options = [
-            item
-            for item in _preset_options(hass.config.language, include_empty=include_empty)
-            if item["value"] != "rail_aggressive_cooling"
-        ]
-        fields[
-            vol.Required(
-                CONF_HEATING_PRESET,
-                default=options.get(CONF_HEATING_PRESET, legacy_preset),
-            )
-        ] = selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=heating_options,
-                mode=selector.SelectSelectorMode.DROPDOWN,
-            )
-        )
-    return vol.Schema(fields)
+        }
+    )
 
 
 def _apply_mode_presets(target: dict[str, Any], selected: dict[str, Any]) -> bool:
-    """Apply selected mode presets and return whether a custom editor is needed."""
+    """Apply one profile to heating, cooling and changeover behavior."""
 
-    needs_custom = False
-    for preset_key, curve_key, mode in (
-        (CONF_COOLING_PRESET, CONF_COOLING_CURVE_POINTS, "cooling"),
-        (CONF_HEATING_PRESET, CONF_HEATING_CURVE_POINTS, "heating"),
-    ):
-        if preset_key not in selected:
-            continue
-        preset = selected[preset_key]
-        target[preset_key] = PRESET_CUSTOM if preset == PRESET_EMPTY else preset
-        if preset in PRESETS:
-            target[curve_key] = preset_curve(preset, mode)
-        elif preset in (PRESET_CUSTOM, PRESET_EMPTY):
-            needs_custom = True
-    return needs_custom
+    preset = selected[CONF_PRESET]
+    preset = PRESET_CUSTOM if preset == PRESET_EMPTY else preset
+    target[CONF_PRESET] = preset
+    target[CONF_COOLING_PRESET] = preset
+    target[CONF_HEATING_PRESET] = preset
+    if preset not in PRESETS:
+        return True
+    target[CONF_COOLING_CURVE_POINTS] = preset_curve(preset, "cooling")
+    target[CONF_HEATING_CURVE_POINTS] = preset_curve(preset, "heating")
+    heating_changeover, cooling_changeover = preset_changeovers(preset)
+    target[CONF_HEATING_ON_THRESHOLD] = heating_changeover
+    target[CONF_HEATING_OFF_THRESHOLD] = heating_changeover + 1.5
+    target[CONF_COOLING_ON_THRESHOLD] = cooling_changeover
+    target[CONF_COOLING_OFF_THRESHOLD] = cooling_changeover - 1.5
+    return False
 
 
 def _optional_entity_field(key: str, label_options: dict[str, Any]) -> vol.Optional:
@@ -167,71 +143,6 @@ def _optional_entity_field(key: str, label_options: dict[str, Any]) -> vol.Optio
     if label_options.get(key):
         return vol.Optional(key, description={"suggested_value": label_options[key]})
     return vol.Optional(key)
-
-
-def _threshold_schema(options: dict[str, Any]) -> vol.Schema:
-    """Build the threshold form schema."""
-
-    fields: dict[vol.Marker, Any] = {}
-    if _cooling_enabled(options):
-        fields.update(
-            {
-                vol.Required(
-                    CONF_COOLING_ON_THRESHOLD,
-                    default=options.get(CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD),
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=THRESHOLD_MIN,
-                        max=THRESHOLD_MAX,
-                        step=0.1,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
-                    )
-                ),
-                vol.Required(
-                    CONF_COOLING_OFF_THRESHOLD,
-                    default=options.get(CONF_COOLING_OFF_THRESHOLD, DEFAULT_COOLING_OFF_THRESHOLD),
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=THRESHOLD_MIN,
-                        max=THRESHOLD_MAX,
-                        step=0.1,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
-                    )
-                ),
-            }
-        )
-    if _heating_enabled(options):
-        fields.update(
-            {
-                vol.Required(
-                    CONF_HEATING_ON_THRESHOLD,
-                    default=options.get(CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD),
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=THRESHOLD_MIN,
-                        max=THRESHOLD_MAX,
-                        step=0.1,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
-                    )
-                ),
-                vol.Required(
-                    CONF_HEATING_OFF_THRESHOLD,
-                    default=options.get(CONF_HEATING_OFF_THRESHOLD, DEFAULT_HEATING_OFF_THRESHOLD),
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=THRESHOLD_MIN,
-                        max=THRESHOLD_MAX,
-                        step=0.1,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
-                    )
-                ),
-            }
-        )
-    return vol.Schema(fields)
 
 
 def _control_behavior_schema(options: dict[str, Any]) -> vol.Schema:
@@ -295,18 +206,6 @@ def _control_behavior_schema(options: dict[str, Any]) -> vol.Schema:
     )
 
 
-def _cooling_enabled(options: dict[str, Any]) -> bool:
-    """Return whether cooling fields should be visible."""
-
-    return bool(options.get(CONF_COOLING_CLIMATE) or options.get(CONF_SENSOR_ONLY))
-
-
-def _heating_enabled(options: dict[str, Any]) -> bool:
-    """Return whether heating fields should be visible."""
-
-    return bool(options.get(CONF_HEATING_CLIMATE) or options.get(CONF_SENSOR_ONLY))
-
-
 def _climate_mode_errors(hass: Any, options: dict[str, Any]) -> dict[str, str]:
     """Return field errors for linked climate entities lacking a requested mode."""
 
@@ -343,12 +242,19 @@ def _linked_entities_schema(hass: Any, options: dict[str, Any], *, include_name:
     return vol.Schema(fields)
 
 
-def _curve_schema(points: list[CurvePoint] | None = None) -> vol.Schema:
-    """Build a fixed-slot curve editor schema."""
+def _curve_schema(
+    heating_points: list[CurvePoint] | None = None,
+    cooling_points: list[CurvePoint] | None = None,
+    options: dict[str, Any] | None = None,
+) -> vol.Schema:
+    """Build one combined heating, neutral-zone and cooling editor."""
 
-    points = points or parse_curve_points(DEFAULT_CURVE_POINTS)
+    heating_points = heating_points or parse_curve_points(DEFAULT_HEATING_CURVE_POINTS)
+    cooling_points = cooling_points or parse_curve_points(DEFAULT_COOLING_CURVE_POINTS)
+    options = options or {}
+    point_count = min(len(heating_points), len(cooling_points))
     fields: dict[vol.Marker, Any] = {
-        vol.Required("point_count", default=len(points)): selector.NumberSelector(
+        vol.Required("point_count", default=point_count): selector.NumberSelector(
             selector.NumberSelectorConfig(
                 min=MIN_CURVE_POINTS,
                 max=MAX_CURVE_POINTS,
@@ -359,7 +265,9 @@ def _curve_schema(points: list[CurvePoint] | None = None) -> vol.Schema:
     }
 
     for index in range(MAX_CURVE_POINTS):
-        point = points[index] if index < len(points) else None
+        heating_point = heating_points[index] if index < len(heating_points) else None
+        cooling_point = cooling_points[index] if index < len(cooling_points) else None
+        point = heating_point or cooling_point
         outdoor_key = f"outdoor_temp_{index + 1}"
         outdoor_marker = vol.Optional(outdoor_key, default=point.outdoor_temp) if point else vol.Optional(outdoor_key)
         fields[outdoor_marker] = selector.NumberSelector(
@@ -371,32 +279,55 @@ def _curve_schema(points: list[CurvePoint] | None = None) -> vol.Schema:
                 unit_of_measurement="°C",
             )
         )
-        setpoint_key = f"setpoint_{index + 1}"
-        setpoint_marker = vol.Optional(setpoint_key, default=point.setpoint) if point else vol.Optional(setpoint_key)
-        fields[setpoint_marker] = selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=SETPOINT_MIN,
-                max=SETPOINT_MAX,
-                step=0.1,
-                mode=selector.NumberSelectorMode.BOX,
-                unit_of_measurement="°C",
+        for prefix, curve_point in (("heating", heating_point), ("cooling", cooling_point)):
+            key = f"{prefix}_setpoint_{index + 1}"
+            marker = vol.Optional(key, default=curve_point.setpoint) if curve_point else vol.Optional(key)
+            fields[marker] = selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=SETPOINT_MIN,
+                    max=SETPOINT_MAX,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C",
+                )
             )
+    fields[
+        vol.Required(
+            CONF_HEATING_ON_THRESHOLD,
+            default=options.get(CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD),
         )
+    ] = selector.NumberSelector(
+        selector.NumberSelectorConfig(min=5, max=30, step=0.5, unit_of_measurement="°C")
+    )
+    fields[
+        vol.Required(
+            CONF_COOLING_ON_THRESHOLD,
+            default=options.get(CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD),
+        )
+    ] = selector.NumberSelector(
+        selector.NumberSelectorConfig(min=5, max=35, step=0.5, unit_of_measurement="°C")
+    )
     return vol.Schema(fields)
 
 
-def _points_from_slots(user_input: dict[str, Any]) -> list[dict[str, float]]:
-    """Convert fixed-slot form data into validated curve points."""
+def _points_from_slots(user_input: dict[str, Any]) -> tuple[list[dict[str, float]], list[dict[str, float]]]:
+    """Convert the combined editor into separate internal curves."""
 
     point_count = int(user_input["point_count"])
-    points = []
+    heating_points = []
+    cooling_points = []
     for index in range(point_count):
         outdoor = user_input.get(f"outdoor_temp_{index + 1}")
-        setpoint = user_input.get(f"setpoint_{index + 1}")
-        if outdoor is None or setpoint is None:
+        heating = user_input.get(f"heating_setpoint_{index + 1}")
+        cooling = user_input.get(f"cooling_setpoint_{index + 1}")
+        if outdoor is None or heating is None or cooling is None or float(heating) >= float(cooling):
             raise ValueError("missing_point")
-        points.append(CurvePoint(float(outdoor), float(setpoint)))
-    return serialize_curve_points(parse_curve_points(points))
+        heating_points.append(CurvePoint(float(outdoor), float(heating)))
+        cooling_points.append(CurvePoint(float(outdoor), float(cooling)))
+    return (
+        serialize_curve_points(parse_curve_points(heating_points)),
+        serialize_curve_points(parse_curve_points(cooling_points)),
+    )
 
 
 def _options_from_entry(entry: config_entries.ConfigEntry) -> dict[str, Any]:
@@ -408,7 +339,7 @@ def _options_from_entry(entry: config_entries.ConfigEntry) -> dict[str, Any]:
 class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
-    VERSION = 4
+    VERSION = 5
 
     def __init__(self) -> None:
         """Initialize flow state."""
@@ -444,16 +375,15 @@ class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_preset(self, user_input: dict[str, Any] | None = None):
-        """Choose independent starting presets for each operating mode."""
+        """Choose one building profile."""
 
         if user_input is not None:
             needs_custom = _apply_mode_presets(self._setup_data, user_input)
-            self._setup_data[CONF_PRESET] = PRESET_CUSTOM
             self._setup_data.setdefault(CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS)
             self._setup_data.setdefault(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS)
             if needs_custom:
                 return await self.async_step_custom_curve()
-            return await self.async_step_thresholds()
+            return await self._async_finish_setup()
 
         return self.async_show_form(
             step_id="preset",
@@ -461,64 +391,50 @@ class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_custom_curve(self, user_input: dict[str, Any] | None = None):
-        """Create one shared initial heating and cooling curve."""
+        """Create one combined custom building profile."""
 
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                points = _points_from_slots(user_input)
+                heating_points, cooling_points = _points_from_slots(user_input)
+                if float(user_input[CONF_HEATING_ON_THRESHOLD]) >= float(user_input[CONF_COOLING_ON_THRESHOLD]):
+                    raise ValueError("overlapping_changeover")
             except ValueError:
                 errors["base"] = "invalid_curve"
             else:
-                self._setup_data[CONF_CURVE_POINTS] = points
-                self._setup_data[CONF_COOLING_CURVE_POINTS] = points
-                self._setup_data[CONF_HEATING_CURVE_POINTS] = points
-                return await self.async_step_thresholds()
+                self._setup_data[CONF_PRESET] = PRESET_CUSTOM
+                self._setup_data[CONF_COOLING_PRESET] = PRESET_CUSTOM
+                self._setup_data[CONF_HEATING_PRESET] = PRESET_CUSTOM
+                self._setup_data[CONF_COOLING_CURVE_POINTS] = cooling_points
+                self._setup_data[CONF_HEATING_CURVE_POINTS] = heating_points
+                heating_changeover = float(user_input[CONF_HEATING_ON_THRESHOLD])
+                cooling_changeover = float(user_input[CONF_COOLING_ON_THRESHOLD])
+                self._setup_data[CONF_HEATING_ON_THRESHOLD] = heating_changeover
+                self._setup_data[CONF_HEATING_OFF_THRESHOLD] = heating_changeover + 1.5
+                self._setup_data[CONF_COOLING_ON_THRESHOLD] = cooling_changeover
+                self._setup_data[CONF_COOLING_OFF_THRESHOLD] = cooling_changeover - 1.5
+                return await self._async_finish_setup()
 
-        points = parse_curve_points(self._setup_data.get(CONF_CURVE_POINTS, DEFAULT_CURVE_POINTS))
+        heating = parse_curve_points(self._setup_data.get(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS))
+        cooling = parse_curve_points(self._setup_data.get(CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS))
         return self.async_show_form(
             step_id="custom_curve",
-            data_schema=_curve_schema(points),
+            data_schema=_curve_schema(heating, cooling, self._setup_data),
             errors=errors,
         )
 
-    async def async_step_thresholds(self, user_input: dict[str, Any] | None = None):
-        """Configure initial thresholds."""
+    async def _async_finish_setup(self):
+        """Create an entry with safe advanced defaults."""
 
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            candidate = {**self._setup_data, **user_input}
-            error = threshold_error(
-                candidate,
-                cooling_enabled=_cooling_enabled(candidate),
-                heating_enabled=_heating_enabled(candidate),
-            )
-            if error:
-                errors["base"] = error
-            else:
-                self._setup_data.update(user_input)
-                return await self.async_step_control_behavior()
-
-        return self.async_show_form(
-            step_id="thresholds",
-            data_schema=_threshold_schema(self._setup_data),
-            errors=errors,
-        )
-
-    async def async_step_control_behavior(self, user_input: dict[str, Any] | None = None):
-        """Configure outdoor smoothing and indoor-temperature demand."""
-
-        if user_input is not None:
-            self._setup_data.update(user_input)
-            title = self._setup_data.pop(CONF_NAME)
-            await self.async_set_unique_id(f"{DOMAIN}_{title.lower().replace(' ', '_')}")
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(title=title, data=self._setup_data)
-
-        return self.async_show_form(
-            step_id="control_behavior",
-            data_schema=_control_behavior_schema(self._setup_data),
-        )
+        self._setup_data.setdefault(CONF_OUTDOOR_AVERAGING_HOURS, DEFAULT_OUTDOOR_AVERAGING_HOURS)
+        self._setup_data.setdefault(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA)
+        self._setup_data.setdefault(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA)
+        self._setup_data.setdefault(CONF_INDOOR_SETTLING_HOURS, DEFAULT_INDOOR_SETTLING_HOURS)
+        self._setup_data.setdefault(CONF_OPPOSITE_ENTITY_INTERLOCK, DEFAULT_OPPOSITE_ENTITY_INTERLOCK)
+        title = self._setup_data.pop(CONF_NAME)
+        await self.async_set_unique_id(f"{DOMAIN}_{title.lower().replace(' ', '_')}")
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title=title, data=self._setup_data)
 
 
 class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
@@ -533,7 +449,7 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Show options menu."""
 
-        menu_options = ["linked_entities", "preset", "custom_curve", "thresholds", "control_behavior"]
+        menu_options = ["linked_entities", "preset", "custom_curve", "control_behavior"]
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -563,12 +479,12 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_preset(self, user_input: dict[str, Any] | None = None):
-        """Apply independent built-in presets for each operating mode."""
+        """Apply one profile to the entire building zone."""
 
         if user_input is not None:
             new_options = {**self.config_entry.options}
-            _apply_mode_presets(new_options, user_input)
-            new_options[CONF_PRESET] = PRESET_CUSTOM
+            if _apply_mode_presets(new_options, user_input):
+                return await self.async_step_custom_curve()
             return self.async_create_entry(title="", data=new_options)
 
         return self.async_show_form(
@@ -577,55 +493,42 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_custom_curve(self, user_input: dict[str, Any] | None = None):
-        """Edit one custom curve shared by heating and cooling."""
+        """Edit heating, neutral zone and cooling together."""
 
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                points = _points_from_slots(user_input)
+                heating_points, cooling_points = _points_from_slots(user_input)
+                if float(user_input[CONF_HEATING_ON_THRESHOLD]) >= float(user_input[CONF_COOLING_ON_THRESHOLD]):
+                    raise ValueError("overlapping_changeover")
             except ValueError:
                 errors["base"] = "invalid_curve"
             else:
                 new_options = {
                     **self.config_entry.options,
-                    CONF_CURVE_POINTS: points,
-                    CONF_COOLING_CURVE_POINTS: points,
-                    CONF_HEATING_CURVE_POINTS: points,
+                    CONF_COOLING_CURVE_POINTS: cooling_points,
+                    CONF_HEATING_CURVE_POINTS: heating_points,
                     CONF_PRESET: PRESET_CUSTOM,
                     CONF_COOLING_PRESET: PRESET_CUSTOM,
                     CONF_HEATING_PRESET: PRESET_CUSTOM,
                 }
+                heating_changeover = float(user_input[CONF_HEATING_ON_THRESHOLD])
+                cooling_changeover = float(user_input[CONF_COOLING_ON_THRESHOLD])
+                new_options.update(
+                    {
+                        CONF_HEATING_ON_THRESHOLD: heating_changeover,
+                        CONF_HEATING_OFF_THRESHOLD: heating_changeover + 1.5,
+                        CONF_COOLING_ON_THRESHOLD: cooling_changeover,
+                        CONF_COOLING_OFF_THRESHOLD: cooling_changeover - 1.5,
+                    }
+                )
                 return self.async_create_entry(title="", data=new_options)
 
-        points = parse_curve_points(
-            self._options.get(CONF_CURVE_POINTS) or self._options.get(CONF_COOLING_CURVE_POINTS) or DEFAULT_CURVE_POINTS
-        )
+        heating = parse_curve_points(self._options.get(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS))
+        cooling = parse_curve_points(self._options.get(CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS))
         return self.async_show_form(
             step_id="custom_curve",
-            data_schema=_curve_schema(points),
-            errors=errors,
-        )
-
-    async def async_step_thresholds(self, user_input: dict[str, Any] | None = None):
-        """Edit thresholds."""
-
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            candidate = {**self._options, **user_input}
-            error = threshold_error(
-                candidate,
-                cooling_enabled=_cooling_enabled(candidate),
-                heating_enabled=_heating_enabled(candidate),
-            )
-            if error:
-                errors["base"] = error
-            else:
-                new_options = {**self.config_entry.options, **user_input}
-                return self.async_create_entry(title="", data=new_options)
-
-        return self.async_show_form(
-            step_id="thresholds",
-            data_schema=_threshold_schema(self._options),
+            data_schema=_curve_schema(heating, cooling, self._options),
             errors=errors,
         )
 

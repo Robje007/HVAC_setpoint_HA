@@ -31,3 +31,41 @@ set_curve:
           setpoint: 20
       selector:
         object:
+
+set_profile:
+  name: Set building profile
+  description: Save heating, cooling and outdoor changeover behavior together for the visual editor.
+  fields:
+    entry_id:
+      name: Config entry ID
+      required: true
+      selector:
+        text:
+    heating_points:
+      name: Heating points
+      required: true
+      selector:
+        object:
+    cooling_points:
+      name: Cooling points
+      required: true
+      selector:
+        object:
+    heating_changeover:
+      name: Heating allowed below outdoor temperature
+      required: true
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 0.5
+          unit_of_measurement: °C
+    cooling_changeover:
+      name: Cooling allowed above outdoor temperature
+      required: true
+      selector:
+        number:
+          min: 5
+          max: 35
+          step: 0.5
+          unit_of_measurement: °C

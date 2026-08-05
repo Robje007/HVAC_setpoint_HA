@@ -1,4 +1,4 @@
-"""Select platform for independent HVAC Setpoint Curve presets."""
+"""Single building-profile selector for HVAC Setpoint Curve."""
 
 from __future__ import annotations
 
@@ -8,21 +8,25 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HvacSetpointConfigEntry
 from .const import (
-    CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
+    CONF_COOLING_OFF_THRESHOLD,
+    CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
-    CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
+    CONF_HEATING_OFF_THRESHOLD,
+    CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_PRESET,
-    CONF_SENSOR_ONLY,
+    DEFAULT_PRESET,
     DOMAIN,
     PRESET_CUSTOM,
-    PRESETS,
+    preset_changeovers,
     preset_curve,
     preset_name,
 )
 from .entity import HvacSetpointEntity
+
+VISIBLE_PROFILES = ("comfort", "eco")
 
 
 async def async_setup_entry(
@@ -30,89 +34,60 @@ async def async_setup_entry(
     entry: HvacSetpointConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up one preset select per available operating mode."""
+    """Set up one profile selector for the complete zone."""
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    options = coordinator.merged_options
-    entities: list[ModePresetSelect] = []
-    if options.get(CONF_COOLING_CLIMATE) or options.get(CONF_SENSOR_ONLY):
-        entities.append(
-            ModePresetSelect(
-                coordinator,
-                "cooling_preset",
-                CONF_COOLING_PRESET,
-                CONF_COOLING_CURVE_POINTS,
-                "cooling",
-                allow_aggressive=True,
-            )
-        )
-    if options.get(CONF_HEATING_CLIMATE) or options.get(CONF_SENSOR_ONLY):
-        entities.append(
-            ModePresetSelect(
-                coordinator,
-                "heating_preset",
-                CONF_HEATING_PRESET,
-                CONF_HEATING_CURVE_POINTS,
-                "heating",
-                allow_aggressive=False,
-            )
-        )
-    async_add_entities(entities)
+    async_add_entities([BuildingProfileSelect(coordinator)])
 
 
-class ModePresetSelect(HvacSetpointEntity, SelectEntity):
-    """Select entity that applies a preset to one operating mode only."""
+class BuildingProfileSelect(HvacSetpointEntity, SelectEntity):
+    """Apply a coherent heating, neutral-zone and cooling profile."""
 
-    def __init__(
-        self,
-        coordinator,
-        key: str,
-        preset_key: str,
-        curve_key: str,
-        mode: str,
-        *,
-        allow_aggressive: bool,
-    ) -> None:
-        """Initialize a mode-specific preset select."""
+    _attr_translation_key = "building_profile"
+    _attr_icon = "mdi:home-thermometer-outline"
 
-        super().__init__(coordinator, key)
-        self._attr_translation_key = key
-        self._preset_key = preset_key
-        self._curve_key = curve_key
-        self._mode = mode
+    def __init__(self, coordinator) -> None:
+        """Initialize the building profile selector."""
+
+        super().__init__(coordinator, "building_profile")
         language = coordinator.hass.config.language
-        self._preset_names = {
-            preset: preset_name(preset, language)
-            for preset in PRESETS
-            if allow_aggressive or preset != "rail_aggressive_cooling"
-        }
-        self._custom_name = preset_name(PRESET_CUSTOM, language)
-        self._attr_options = [*self._preset_names.values(), self._custom_name]
+        self._names = {key: preset_name(key, language) for key in VISIBLE_PROFILES}
+        self._custom_name = (
+            "Aangepast — wijzigen via Configureren"
+            if str(language).lower().startswith("nl")
+            else "Custom — edit via Configure"
+        )
+        self._attr_options = [*self._names.values(), self._custom_name]
 
     @property
-    def current_option(self) -> str | None:
-        """Return the current mode-specific preset label."""
+    def current_option(self) -> str:
+        """Return the active building profile."""
 
-        preset = self.coordinator.merged_options.get(
-            self._preset_key,
-            self.coordinator.merged_options.get(CONF_PRESET, PRESET_CUSTOM),
-        )
-        return self._preset_names.get(preset, self._custom_name)
+        preset = self.coordinator.merged_options.get(CONF_PRESET, DEFAULT_PRESET)
+        return self._names.get(preset, self._custom_name)
 
     async def async_select_option(self, option: str) -> None:
-        """Apply a preset to this mode without changing the other mode."""
+        """Apply both curves and both outdoor changeover limits."""
 
-        preset = next(
-            (key for key, name in self._preset_names.items() if name == option),
-            PRESET_CUSTOM,
-        )
+        preset = next((key for key, name in self._names.items() if name == option), PRESET_CUSTOM)
         new_options = {
             **self.coordinator.config_entry.options,
-            self._preset_key: preset,
-            CONF_PRESET: PRESET_CUSTOM,
+            CONF_PRESET: preset,
+            CONF_COOLING_PRESET: preset,
+            CONF_HEATING_PRESET: preset,
         }
-        if preset in PRESETS:
-            new_options[self._curve_key] = preset_curve(preset, self._mode)
+        if preset != PRESET_CUSTOM:
+            heating_changeover, cooling_changeover = preset_changeovers(preset)
+            new_options.update(
+                {
+                    CONF_COOLING_CURVE_POINTS: preset_curve(preset, "cooling"),
+                    CONF_HEATING_CURVE_POINTS: preset_curve(preset, "heating"),
+                    CONF_HEATING_ON_THRESHOLD: heating_changeover,
+                    CONF_HEATING_OFF_THRESHOLD: heating_changeover + 1.5,
+                    CONF_COOLING_ON_THRESHOLD: cooling_changeover,
+                    CONF_COOLING_OFF_THRESHOLD: cooling_changeover - 1.5,
+                }
+            )
         self.coordinator.hass.config_entries.async_update_entry(
             self.coordinator.config_entry,
             options=new_options,

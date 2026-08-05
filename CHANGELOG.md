@@ -2,8 +2,12 @@
 
 ## 1.2.1 - 2026-08-05
 
-- Makes the visual curve graph full-width and prominent above the point editor, including on narrow dashboard cards.
-- Adds a clear hint that graph points can be dragged directly.
+- Replaces separate heating and cooling profile choices with one coherent building profile.
+- Integrates heating, neutral-zone, cooling and outdoor changeover settings in one custom editor and graph.
+- Provides simplified Comfort and Eco defaults suitable for homes and small commercial zones.
+- Moves thermal inertia and interlock controls behind an Advanced settings entry.
+- Migrates existing entries without discarding their curves or equipment links.
+- Makes the combined heating/cooling graph full-width and prominent above the simple point editor.
 
 ## 1.2.0 - 2026-08-05
 

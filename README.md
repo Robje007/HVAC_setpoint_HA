@@ -6,7 +6,7 @@
 
 Weather-compensated HVAC setpoint curves for Home Assistant.
 
-This custom integration computes a target HVAC setpoint from a configurable outdoor temperature curve. It can expose the computed setpoint for automations, and optionally control linked heating and cooling `climate` entities with editable outdoor-temperature hysteresis thresholds.
+This custom integration gives a home or small business one understandable HVAC profile: a heating line, a comfortable neutral zone, a cooling line, and outdoor temperatures for changing between seasons. It can expose the calculated targets for automations or control linked `climate` entities directly.
 
 If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-fi](https://ko-fi.com/robje007).
 
@@ -18,10 +18,10 @@ Version: [`1.2.1`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.
 
 - UI setup, no YAML required.
 - Multiple independent config entries for different rooms or zones.
-- Configurable 3-6 point outdoor temperature to setpoint curve.
-- Built-in presets: Comfort, Eco / energy saving, and Aggressive cooling.
-- Editable live outdoor-temperature thresholds through `number` entities.
-- Separate heating and cooling profile selection through `select` entities. Applying a profile overwrites only that mode's curve.
+- One combined 3-6 point comfort band containing heating and cooling limits.
+- Simple Comfort and Eco building profiles based on common real-world room targets.
+- A visible neutral zone prevents rapid switching between heating and cooling.
+- One building-profile selector updates heating, cooling and outdoor changeover together.
 - Persistent controller on/off switch for pausing automatic HVAC control while keeping manual control available.
 - Automation-friendly night-mode switch with separate heating and cooling target corrections.
 - Optional linked cooling and heating `climate` entities.
@@ -41,11 +41,8 @@ Each config entry creates:
 - `binary_sensor.<name>_cooling_active`
 - `binary_sensor.<name>_heating_active`
 - `number.<name>_cooling_on_threshold`
-- `number.<name>_cooling_off_threshold`
 - `number.<name>_heating_on_threshold`
-- `number.<name>_heating_off_threshold`
-- `select.<name>_cooling_profile` (when cooling is configured)
-- `select.<name>_heating_profile` (when heating is configured)
+- `select.<name>_building_profile`
 
 ## Brand Icon
 
@@ -102,9 +99,7 @@ During setup:
    - heating and cooling: select both climate entities
    - no direct control: enable sensor-only mode, which creates sensors only and does not send commands to HVAC
 3. Optionally choose outdoor temperature and outdoor humidity sensors. The linked climate entity supplies the indoor temperature automatically through `current_temperature`; select a separate indoor sensor only when you want to override that measurement.
-4. Pick a separate starting profile for each configured operating mode.
-5. Confirm cooling and heating hysteresis thresholds for the outdoor temperature.
-6. Confirm the thermal-inertia settings and optionally enable the interlock for two separate HVAC entities that must never run in opposite modes.
+4. Choose **Comfort**, **Eco**, or **Custom**. Comfort and Eco are ready to use without engineering knowledge.
 
 Required fields:
 
@@ -122,18 +117,15 @@ Optional fields:
 Later, open **Configure** on the integration entry to:
 
 - Change linked entities.
-- Apply heating and cooling profiles independently.
-- Create or edit one custom heating/cooling curve shared by both modes.
-- Edit thresholds.
-- Edit thermal inertia and indoor-demand behavior.
+- Choose one building profile for the complete zone.
+- Edit one custom comfort band containing heating, neutral and cooling behavior.
+- Change advanced thermal-inertia behavior only when needed.
 
-To create a custom curve, open **Configure** and choose **Create or edit custom heating/cooling curve**. The same 3-6 points are used by both heating and cooling. Each linked mode also has its own profile select: changing the cooling profile does not alter heating and vice versa. **Aggressive cooling** is offered only for cooling. Selecting `Custom` on a profile entity marks that mode as custom; Home Assistant select entities cannot open an editor screen.
-
-Thresholds are also exposed as `number` entities so they can be changed directly from dashboards and automations.
+To customize behavior, open **Configure > Custom comfort band**. For each outdoor point, choose **Heat up to** and **Cool from**. The space between them is the neutral zone. On the same screen, choose below which outdoor temperature heating is allowed and above which temperature cooling is allowed. The normal Comfort and Eco profiles configure all of this automatically.
 
 ## Visual Curve Editor
 
-The standard Home Assistant config flow can edit curve points, but it cannot render a rich draggable graph. The integration package includes a Lovelace card with a full-width graph above the point editor. Points can be dragged directly in the graph or edited numerically below it:
+The standard Home Assistant config flow can edit the comfort-band values, while the included Lovelace card shows their relationship much more clearly. Its full-width graph updates immediately when the simple values below it are changed:
 
 ```text
 custom_components/hvac_setpoint_curve/www/hvac-setpoint-curve-card.js
@@ -156,30 +148,31 @@ entity: sensor.living_room_ac_curve_target_setpoint
 title: Living room HVAC curve
 ```
 
-The card has separate **Cooling** and **Heating** tabs and saves only the selected curve. Individual setpoints appear on the left and the live curve appears on the right. A custom curve requires at least three points.
+The card shows heating in red, cooling in blue and the neutral changeover region between them. All values are edited and saved together, so there are no separate heating and cooling tabs to reconcile. A custom profile requires at least three outdoor points.
 
 The card saves changes through:
 
 ```text
-hvac_setpoint_curve.set_curve
+hvac_setpoint_curve.set_profile
 ```
 
 ## Curve Example
 
-A curve maps outdoor temperature to the desired setpoint:
+A building profile maps outdoor temperature to a heating limit and a cooling limit:
 
-| Outdoor temperature | Target setpoint |
-| ---: | ---: |
-| 18 C | 23 C |
-| 26 C | 21 C |
-| 35 C | 20 C |
+| Outdoor temperature | Heat up to | Cool from |
+| ---: | ---: | ---: |
+| -10 C | 21.5 C | 24 C |
+| 10 C | 21 C | 24 C |
+| 20 C | 20 C | 24 C |
+| 32 C | 18 C | 25 C |
 
 Behavior:
 
-- Below 18 C, the target setpoint stays flat at 23 C.
-- Between 18 C and 26 C, the integration linearly interpolates between 23 C and 21 C.
-- Between 26 C and 35 C, it interpolates between 21 C and 20 C.
-- Above 35 C, it stays flat at 20 C.
+- Below the red line, heating demand can start when the outdoor heating limit permits it.
+- Above the blue line, cooling demand can start when the outdoor cooling limit permits it.
+- Between both lines, neither mode is requested; this is the comfort or neutral band.
+- Between entered outdoor points, both limits are interpolated smoothly.
 
 ## Control Behavior and Thermal Inertia
 
@@ -207,13 +200,13 @@ When an explicitly configured outdoor sensor is unavailable, the integration doe
 
 Cooling:
 
-- Starts when the averaged outdoor temperature is above the cooling-on threshold and indoor temperature is at least 0.5 C above the calculated target by default.
-- Once active, stays available despite a falling outdoor temperature. After the outdoor average is below the cooling-off threshold and indoor temperature has continuously remained no more than 0.2 C above target for 2 hours, the curve session becomes inactive but the climate entity remains in cooling mode.
+- Starts when the averaged outdoor temperature is above **Cooling allowed above outdoor** and indoor temperature is at least 0.5 C above the blue cooling line by default.
+- Once active, stays available through short weather changes. A hidden 1.5 C seasonal hysteresis prevents rapid switching around the chosen outdoor limit.
 
 Heating:
 
-- Starts when the averaged outdoor temperature is below the heating-on threshold and indoor temperature is at least 0.5 C below the calculated target by default.
-- Once active, stays available despite a rising outdoor temperature. After the outdoor average is above the heating-off threshold and indoor temperature has continuously remained no more than 0.2 C below target for 2 hours, the curve session becomes inactive but the climate entity remains in heating mode.
+- Starts when the averaged outdoor temperature is below **Heating allowed below outdoor** and indoor temperature is at least 0.5 C below the red heating line by default.
+- Once active, stays available through short weather changes. A hidden 1.5 C seasonal hysteresis prevents rapid switching around the chosen outdoor limit.
 
 The indoor start difference, target tolerance, and stabilization time are shared by heating and cooling and can be changed under **Configure > Thermal inertia and indoor demand**. Set stabilization time to 0 for immediate seasonal release once outdoor and indoor release conditions are both met. A room temperature beyond the target never releases the mode by itself: the integration continues updating the setpoint and lets the HVAC thermostat maintain it. For separate heating and cooling climate entities, each entity's own indoor measurement is used. The outdoor moving average is built while the integration is running; immediately after a restart it initially equals the current outdoor value and becomes representative as new time passes. A climate entity already in `heat` or `cool` is recognized as an active cycle after restart and receives a fresh full stabilization period.
 
@@ -225,7 +218,7 @@ Use the **Controller enabled** switch to pause or resume automatic HVAC control.
 
 Use the **Night mode** switch from a Home Assistant schedule, sleep routine, or presence automation. The number entities **Night mode: heat lower by** (default `1.5 C`) and **Night mode: cool higher by** (default `1.0 C`) can be adjusted directly beside the switch. The corrections are applied after the outdoor curve and humidity correction, while the original curve targets remain available as sensor attributes. Setting one to `0` disables the night adjustment for that mode.
 
-The integration rejects reversed hysteresis ranges and requires a neutral band between heating and cooling. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update. For two separate entities, enable **Switch off the separate opposite HVAC entity** under **Configure > Thermal inertia and indoor demand**. A new heating demand then switches the cooler off first, and a new cooling demand switches the heater off first. The option defaults to off so existing installations retain their previous behavior.
+The integration requires the heating outdoor limit to remain below the cooling limit and automatically adds safe seasonal hysteresis. One climate entity may safely be linked for both modes; it receives one non-conflicting command per update. For two separate entities, enable the interlock under **Configure > Advanced behavior** when they must never run together. A new heating demand then switches the cooler off first, and a new cooling demand switches the heater off first.
 
 ## FAQ
 
@@ -241,9 +234,9 @@ Yes. Enable sensor-only mode. The integration will still create the target setpo
 
 This is intentional. Buildings retain heat after a hot day, and can warm up again after the compressor first stops. The controller therefore keeps the climate entity in cooling mode while its own thermostat handles these rebounds. The integration updates the target temperature but never sets the climate entity to `off`.
 
-### Can presets be edited?
+### Can profiles be edited?
 
-Yes. Profiles are only starting points. Cooling and heating can use different profiles. Editing shared curve points switches both profiles to custom.
+Comfort and Eco are safe starting points. Editing the combined comfort band switches the building profile to Custom while keeping heating, cooling and changeover behavior together.
 
 ## Development
 

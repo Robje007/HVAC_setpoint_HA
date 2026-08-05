@@ -21,9 +21,9 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_OUTDOOR_TEMP_SENSOR,
     CONF_SENSOR_ONLY,
     DOMAIN,
-    PRESET_CUSTOM,
     PRESETS,
     SERVICE_SET_CURVE,
+    SERVICE_SET_PROFILE,
 )
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -57,6 +57,7 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
 
     assert entry.state is ConfigEntryState.LOADED
     assert hass.services.has_service(DOMAIN, SERVICE_SET_CURVE)
+    assert hass.services.has_service(DOMAIN, SERVICE_SET_PROFILE)
     integration_sensors = [
         state for state in hass.states.async_all("sensor") if state.attributes.get("config_entry_id") == entry.entry_id
     ]
@@ -134,27 +135,63 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
     assert entry.options[CONF_COOLING_NIGHT_OFFSET] == 2.0
     assert entry.options[CONF_HEATING_NIGHT_OFFSET] == -2.5
 
-    cooling_profile_id = entity_registry.async_get_entity_id(
+    heating_changeover_id = entity_registry.async_get_entity_id(
+        "number",
+        DOMAIN,
+        f"{entry.entry_id}_heating_on_threshold",
+    )
+    assert heating_changeover_id is not None
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": heating_changeover_id, "value": 17.0},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert entry.options["heating_on_threshold"] == 17.0
+    assert entry.options["heating_off_threshold"] == 18.5
+
+    building_profile_id = entity_registry.async_get_entity_id(
         "select",
         DOMAIN,
-        f"{entry.entry_id}_cooling_preset",
+        f"{entry.entry_id}_building_profile",
     )
-    heating_profile_id = entity_registry.async_get_entity_id(
-        "select",
-        DOMAIN,
-        f"{entry.entry_id}_heating_preset",
-    )
-    assert cooling_profile_id is not None
-    assert heating_profile_id is not None
+    assert building_profile_id is not None
 
     await hass.services.async_call(
         "select",
         "select_option",
-        {"entity_id": cooling_profile_id, "option": "Aggressive cooling"},
+        {"entity_id": building_profile_id, "option": "Eco / energy saving"},
         blocking=True,
     )
     await hass.async_block_till_done()
 
-    assert entry.options[CONF_COOLING_PRESET] == "rail_aggressive_cooling"
-    assert entry.options[CONF_COOLING_CURVE_POINTS] == PRESETS["rail_aggressive_cooling"]["points"]
-    assert entry.options.get(CONF_HEATING_PRESET, PRESET_CUSTOM) == PRESET_CUSTOM
+    assert entry.options[CONF_COOLING_PRESET] == "eco"
+    assert entry.options[CONF_HEATING_PRESET] == "eco"
+    assert entry.options[CONF_COOLING_CURVE_POINTS] == PRESETS["eco"]["points"]
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SET_PROFILE,
+        {
+            "entry_id": entry.entry_id,
+            "heating_points": [
+                {"outdoor_temp": 0, "setpoint": 21},
+                {"outdoor_temp": 15, "setpoint": 20},
+                {"outdoor_temp": 30, "setpoint": 19},
+            ],
+            "cooling_points": [
+                {"outdoor_temp": 0, "setpoint": 24},
+                {"outdoor_temp": 15, "setpoint": 24},
+                {"outdoor_temp": 30, "setpoint": 25},
+            ],
+            "heating_changeover": 18,
+            "cooling_changeover": 22,
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert entry.options["preset"] == "custom"
+    assert entry.options["heating_on_threshold"] == 18
+    assert entry.options["cooling_on_threshold"] == 22

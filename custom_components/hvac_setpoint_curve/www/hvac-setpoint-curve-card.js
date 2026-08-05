@@ -7,7 +7,6 @@ class HvacSetpointCurveCard extends HTMLElement {
     this.mode = null;
     this.points = [];
     this.dirty = false;
-    this.dragIndex = null;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
   }
 
@@ -35,16 +34,21 @@ class HvacSetpointCurveCard extends HTMLElement {
       ? {
           heating: "Verwarmen",
           cooling: "Koelen",
-          outdoorCurve: "Afzonderlijke stook- en koellijnen op basis van buitentemperatuur",
-          customPreset: "Eigen preset",
-          help: "Voeg minimaal 3 losse setpoints toe. Wijzigingen verschijnen direct in de curve.",
+          outdoorCurve: "Eén gebouwprofiel voor verwarmen, neutraal en koelen",
+          customPreset: "Aangepaste comfortband",
+          help: "Kies minimaal 3 buitentemperaturen. Verwarmen blijft altijd onder koelen.",
           graphTitle: "Visuele stook-/koellijn",
-          graphHelp: "Sleep de punten in de grafiek of pas de waarden eronder aan.",
+          graphHelp: "Pas de eenvoudige waarden onder de grafiek aan; de lijnen veranderen direct mee.",
+          heatingTarget: "Verwarmen tot",
+          coolingTarget: "Koelen vanaf",
+          heatingChangeover: "Verwarming toegestaan onder buiten",
+          coolingChangeover: "Koeling toegestaan boven buiten",
+          neutralZone: "Daartussen blijft het systeem neutraal.",
           outdoor: "Buiten °C",
           setpoint: "Doel °C",
           remove: "Verwijder",
           add: "Punt toevoegen",
-          saveCurve: "Gekozen curve opslaan",
+          saveCurve: "Gebouwprofiel opslaan",
           saving: "Opslaan…",
           saved: "Curve opgeslagen",
           saveError: "Opslaan mislukt. Controleer de Home Assistant-logboeken.",
@@ -62,16 +66,21 @@ class HvacSetpointCurveCard extends HTMLElement {
       : {
           heating: "Heating",
           cooling: "Cooling",
-          outdoorCurve: "Separate heating and cooling curves based on outdoor temperature",
-          customPreset: "Custom preset",
-          help: "Add at least 3 individual setpoints. Changes appear in the curve immediately.",
+          outdoorCurve: "One building profile for heating, neutral and cooling",
+          customPreset: "Custom comfort band",
+          help: "Choose at least 3 outdoor temperatures. Heating must always remain below cooling.",
           graphTitle: "Visual heating/cooling curve",
-          graphHelp: "Drag points in the graph or edit the values below.",
+          graphHelp: "Edit the simple values below; both lines update immediately.",
+          heatingTarget: "Heat up to",
+          coolingTarget: "Cool from",
+          heatingChangeover: "Heating allowed below outdoor",
+          coolingChangeover: "Cooling allowed above outdoor",
+          neutralZone: "Between these limits the system remains neutral.",
           outdoor: "Outdoor °C",
           setpoint: "Target °C",
           remove: "Remove",
           add: "Add point",
-          saveCurve: "Save selected curve",
+          saveCurve: "Save building profile",
           saving: "Saving…",
           saved: "Curve saved",
           saveError: "Save failed. Check the Home Assistant logs.",
@@ -104,18 +113,17 @@ class HvacSetpointCurveCard extends HTMLElement {
       attrs.heating_stabilizing ? ui.heatingStabilizing : null,
     ].filter(Boolean);
 
-    const availableModes = [
-      attrs.cooling_enabled ? "cooling" : null,
-      attrs.heating_enabled ? "heating" : null,
-    ].filter(Boolean);
-    if (!availableModes.includes(this.mode)) {
-      this.mode = availableModes[0] || "cooling";
-      this.dirty = false;
-    }
     if (!this.dirty) {
-      const selectedCurve =
-        this.mode === "heating" ? attrs.heating_curve_points : attrs.cooling_curve_points;
-      this.points = structuredClone(selectedCurve || attrs.curve_points || []);
+      const heating = attrs.heating_curve_points || [];
+      const cooling = attrs.cooling_curve_points || [];
+      const count = Math.min(heating.length, cooling.length);
+      this.points = Array.from({ length: count }, (_, index) => ({
+        outdoor_temp: Number(heating[index].outdoor_temp),
+        heating_setpoint: Number(heating[index].setpoint),
+        cooling_setpoint: Number(cooling[index].setpoint),
+      }));
+      this.heatingChangeover = Number(attrs.heating_changeover ?? 18);
+      this.coolingChangeover = Number(attrs.cooling_changeover ?? 22);
     }
 
     this.shadowRoot.innerHTML = `
@@ -195,7 +203,7 @@ class HvacSetpointCurveCard extends HTMLElement {
         }
         .row {
           display: grid;
-          grid-template-columns: 1fr 1fr auto;
+          grid-template-columns: 1fr 1fr 1fr auto;
           gap: 8px;
           align-items: end;
         }
@@ -221,6 +229,15 @@ class HvacSetpointCurveCard extends HTMLElement {
           justify-content: space-between;
           gap: 8px;
           margin-top: 12px;
+        }
+        .changeovers {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: 14px;
+          padding: 12px;
+          border-radius: 6px;
+          background: color-mix(in srgb, var(--primary-color, #03a9f4) 8%, transparent);
         }
         .muted {
           color: var(--secondary-text-color, #666);
@@ -262,14 +279,6 @@ class HvacSetpointCurveCard extends HTMLElement {
               <h2>${this.escapeHtml(this.config.title || "HVAC Setpoint Curve")}</h2>
               <div class="muted">${ui.outdoorCurve}</div>
             </div>
-            ${
-              availableModes.length > 1
-                ? `<div class="tabs">
-                    <button data-mode="cooling" class="${this.mode === "cooling" ? "active" : ""}">${ui.cooling}</button>
-                    <button data-mode="heating" class="${this.mode === "heating" ? "active" : ""}">${ui.heating}</button>
-                  </div>`
-                : ""
-            }
           </div>
           <div class="status">
             ${statusItems
@@ -301,13 +310,25 @@ class HvacSetpointCurveCard extends HTMLElement {
                     <label>${ui.outdoor}
                       <input data-index="${index}" data-key="outdoor_temp" type="number" step="0.1" value="${point.outdoor_temp}">
                     </label>
-                    <label>${ui.setpoint}
-                      <input data-index="${index}" data-key="setpoint" type="number" step="0.1" value="${point.setpoint}">
+                    <label>${ui.heatingTarget}
+                      <input data-index="${index}" data-key="heating_setpoint" type="number" step="0.1" value="${point.heating_setpoint}">
+                    </label>
+                    <label>${ui.coolingTarget}
+                      <input data-index="${index}" data-key="cooling_setpoint" type="number" step="0.1" value="${point.cooling_setpoint}">
                     </label>
                     <button data-remove="${index}" ${this.points.length <= 3 ? "disabled" : ""}>${ui.remove}</button>
                   </div>`
                   )
                   .join("")}
+              </div>
+              <div class="changeovers">
+                <label>${ui.heatingChangeover}
+                  <input data-changeover="heating" type="number" step="0.5" value="${this.heatingChangeover}">
+                </label>
+                <label>${ui.coolingChangeover}
+                  <input data-changeover="cooling" type="number" step="0.5" value="${this.coolingChangeover}">
+                </label>
+                <div class="muted">${ui.neutralZone}</div>
               </div>
               <div class="actions">
                 <button data-add ${this.points.length >= 6 ? "disabled" : ""}>${ui.add}</button>
@@ -334,11 +355,20 @@ class HvacSetpointCurveCard extends HTMLElement {
       });
     });
 
-    this.shadowRoot.querySelectorAll("input").forEach((input) => {
+    this.shadowRoot.querySelectorAll("input[data-index]").forEach((input) => {
       input.addEventListener("input", () => {
         const index = Number(input.dataset.index);
         this.points[index][input.dataset.key] = Number(input.value);
         this.normalize(false);
+        this.dirty = true;
+        this.setSaveStatus(ui.unsaved);
+        this.draw();
+      });
+    });
+    this.shadowRoot.querySelectorAll("input[data-changeover]").forEach((input) => {
+      input.addEventListener("input", () => {
+        if (input.dataset.changeover === "heating") this.heatingChangeover = Number(input.value);
+        else this.coolingChangeover = Number(input.value);
         this.dirty = true;
         this.setSaveStatus(ui.unsaved);
         this.draw();
@@ -355,8 +385,16 @@ class HvacSetpointCurveCard extends HTMLElement {
     });
 
     this.shadowRoot.querySelector("[data-add]")?.addEventListener("click", () => {
-      const last = this.points[this.points.length - 1] || { outdoor_temp: 20, setpoint: 21 };
-      this.points.push({ outdoor_temp: Number(last.outdoor_temp) + 5, setpoint: Number(last.setpoint) });
+      const last = this.points[this.points.length - 1] || {
+        outdoor_temp: 20,
+        heating_setpoint: 20,
+        cooling_setpoint: 24,
+      };
+      this.points.push({
+        outdoor_temp: Number(last.outdoor_temp) + 5,
+        heating_setpoint: Number(last.heating_setpoint),
+        cooling_setpoint: Number(last.cooling_setpoint),
+      });
       this.normalize(true);
       this.dirty = true;
       this.render();
@@ -369,10 +407,18 @@ class HvacSetpointCurveCard extends HTMLElement {
       button.disabled = true;
       this.setSaveStatus(ui.saving);
       try {
-        await this._hass.callService("hvac_setpoint_curve", "set_curve", {
+        await this._hass.callService("hvac_setpoint_curve", "set_profile", {
           entry_id: entryId,
-          mode: this.mode,
-          points: this.points,
+          heating_points: this.points.map((point) => ({
+            outdoor_temp: point.outdoor_temp,
+            setpoint: point.heating_setpoint,
+          })),
+          cooling_points: this.points.map((point) => ({
+            outdoor_temp: point.outdoor_temp,
+            setpoint: point.cooling_setpoint,
+          })),
+          heating_changeover: this.heatingChangeover,
+          cooling_changeover: this.coolingChangeover,
         });
         this.dirty = false;
         this.setSaveStatus(ui.saved);
@@ -385,20 +431,22 @@ class HvacSetpointCurveCard extends HTMLElement {
       }
     });
 
-    const canvas = this.shadowRoot.querySelector("canvas");
-    canvas.addEventListener("pointerdown", (event) => this.startDrag(event));
-    canvas.addEventListener("pointermove", (event) => this.drag(event));
-    canvas.addEventListener("pointerup", () => this.endDrag());
-    canvas.addEventListener("pointerleave", () => this.endDrag());
   }
 
   normalize(sort) {
     this.points = this.points
       .map((point) => ({
         outdoor_temp: Math.round(Number(point.outdoor_temp) * 10) / 10,
-        setpoint: Math.round(Number(point.setpoint) * 10) / 10,
+        heating_setpoint: Math.round(Number(point.heating_setpoint) * 10) / 10,
+        cooling_setpoint: Math.round(Number(point.cooling_setpoint) * 10) / 10,
       }))
-      .filter((point) => Number.isFinite(point.outdoor_temp) && Number.isFinite(point.setpoint))
+      .filter(
+        (point) =>
+          Number.isFinite(point.outdoor_temp) &&
+          Number.isFinite(point.heating_setpoint) &&
+          Number.isFinite(point.cooling_setpoint) &&
+          point.heating_setpoint < point.cooling_setpoint
+      )
       .slice(0, 6);
     if (sort) this.points.sort((a, b) => a.outdoor_temp - b.outdoor_temp);
   }
@@ -436,56 +484,6 @@ class HvacSetpointCurveCard extends HTMLElement {
     };
   }
 
-  pointFromEvent(event) {
-    const canvas = this.shadowRoot.querySelector("canvas");
-    const rect = canvas.getBoundingClientRect();
-    const b = this.bounds();
-    const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
-    return {
-      outdoor_temp: Math.round((b.minX + ((x - b.pad) / (canvas.width - b.pad * 2)) * (b.maxX - b.minX)) * 10) / 10,
-      setpoint: Math.round((b.minY + ((canvas.height - b.pad - y) / (canvas.height - b.pad * 2)) * (b.maxY - b.minY)) * 10) / 10,
-    };
-  }
-
-  startDrag(event) {
-    const canvas = this.shadowRoot.querySelector("canvas");
-    const rect = canvas.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
-    let best = null;
-    let bestDistance = 28;
-    this.points.forEach((point, index) => {
-      const pos = this.xy(point, canvas);
-      const distance = Math.hypot(pos.x - x, pos.y - y);
-      if (distance < bestDistance) {
-        best = index;
-        bestDistance = distance;
-      }
-    });
-    this.dragIndex = best;
-  }
-
-  drag(event) {
-    if (this.dragIndex === null) return;
-    const b = this.bounds();
-    const point = this.pointFromEvent(event);
-    this.points[this.dragIndex] = {
-      outdoor_temp: Math.min(b.maxX, Math.max(b.minX, point.outdoor_temp)),
-      setpoint: Math.min(b.maxY, Math.max(b.minY, point.setpoint)),
-    };
-    this.dirty = true;
-    this.setSaveStatus(this.ui?.unsaved || "Unsaved changes");
-    this.draw();
-  }
-
-  endDrag() {
-    if (this.dragIndex === null) return;
-    this.dragIndex = null;
-    this.normalize(true);
-    this.render();
-  }
-
   draw() {
     const canvas = this.shadowRoot.querySelector("canvas");
     if (!canvas) return;
@@ -516,24 +514,66 @@ class HvacSetpointCurveCard extends HTMLElement {
       ctx.fillText(String(setpoint), 16, y + 7);
     }
 
-    const lineColor = "#0f766e";
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 5;
+    const heatingX = this.xy({ outdoor_temp: this.heatingChangeover, setpoint: b.minY }, canvas).x;
+    const coolingX = this.xy({ outdoor_temp: this.coolingChangeover, setpoint: b.minY }, canvas).x;
+    ctx.fillStyle = "rgba(16, 185, 129, 0.10)";
+    ctx.fillRect(heatingX, b.pad, Math.max(0, coolingX - heatingX), canvas.height - b.pad * 2);
+    ctx.setLineDash([12, 8]);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#dc2626";
     ctx.beginPath();
-    [...this.points].sort((a, b) => a.outdoor_temp - b.outdoor_temp).forEach((point, index) => {
-      const pos = this.xy(point, canvas);
-      if (index === 0) ctx.moveTo(pos.x, pos.y);
-      else ctx.lineTo(pos.x, pos.y);
-    });
+    ctx.moveTo(heatingX, b.pad);
+    ctx.lineTo(heatingX, canvas.height - b.pad);
     ctx.stroke();
+    ctx.strokeStyle = "#0284c7";
+    ctx.beginPath();
+    ctx.moveTo(coolingX, b.pad);
+    ctx.lineTo(coolingX, canvas.height - b.pad);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
-    this.points.forEach((point, index) => {
-      const pos = this.xy(point, canvas);
-      ctx.fillStyle = index === this.dragIndex ? "#dc2626" : lineColor;
-      ctx.fillRect(pos.x - 9, pos.y - 9, 18, 18);
-      ctx.fillStyle = "#111827";
-      ctx.fillText(`P${index + 1}`, pos.x + 12, pos.y - 12);
-    });
+    const sorted = [...this.points].sort((a, b) => a.outdoor_temp - b.outdoor_temp);
+    if (sorted.length > 1) {
+      ctx.fillStyle = "rgba(16, 185, 129, 0.14)";
+      ctx.beginPath();
+      sorted.forEach((point, index) => {
+        const pos = this.xy({ outdoor_temp: point.outdoor_temp, setpoint: point.cooling_setpoint }, canvas);
+        if (index === 0) ctx.moveTo(pos.x, pos.y);
+        else ctx.lineTo(pos.x, pos.y);
+      });
+      [...sorted].reverse().forEach((point) => {
+        const pos = this.xy({ outdoor_temp: point.outdoor_temp, setpoint: point.heating_setpoint }, canvas);
+        ctx.lineTo(pos.x, pos.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+    }
+    const drawCurve = (key, color) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      sorted.forEach((point, index) => {
+        const pos = this.xy({ outdoor_temp: point.outdoor_temp, setpoint: point[key] }, canvas);
+        if (index === 0) ctx.moveTo(pos.x, pos.y);
+        else ctx.lineTo(pos.x, pos.y);
+      });
+      ctx.stroke();
+      sorted.forEach((point) => {
+        const pos = this.xy({ outdoor_temp: point.outdoor_temp, setpoint: point[key] }, canvas);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    };
+    drawCurve("heating_setpoint", "#dc2626");
+    drawCurve("cooling_setpoint", "#0284c7");
+
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillStyle = "#dc2626";
+    ctx.fillText(this.ui?.heating || "Heating", b.pad + 12, b.pad + 28);
+    ctx.fillStyle = "#0284c7";
+    ctx.fillText(this.ui?.cooling || "Cooling", b.pad + 150, b.pad + 28);
   }
 }
 
@@ -544,6 +584,6 @@ if (!customElements.get("hvac-setpoint-curve-card")) {
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "hvac-setpoint-curve-card",
-  name: "HVAC Setpoint Curve Editor",
-  description: "Visual editor for one shared HVAC heating/cooling setpoint curve.",
+  name: "HVAC Building Profile",
+  description: "Visual editor for heating, the neutral comfort zone, cooling and outdoor changeover.",
 });
