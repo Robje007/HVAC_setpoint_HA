@@ -182,7 +182,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: HvacSetpointConfigEntry)
     ]
     keeper = next((entity_id for entity_id in profile_entities if entity_id is not None), None)
     if keeper is not None:
-        entity_registry.async_update_entity(keeper, new_unique_id=f"{entry.entry_id}_building_profile")
+        if profile_entities[0] is None:
+            entity_registry.async_update_entity(keeper, new_unique_id=f"{entry.entry_id}_building_profile")
         for entity_id in profile_entities:
             if entity_id is not None and entity_id != keeper:
                 entity_registry.async_remove(entity_id)
