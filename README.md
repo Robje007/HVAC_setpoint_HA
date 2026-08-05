@@ -12,7 +12,7 @@ If HVAC Setpoint Curve is useful to you, you can [support its development on Ko-
 
 ## Status
 
-Version: [`1.2.0`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.2.0)
+Version: [`1.2.1`](https://github.com/Robje007/HVAC_setpoint_HA/releases/tag/v1.2.1)
 
 ## Features
 
@@ -133,7 +133,7 @@ Thresholds are also exposed as `number` entities so they can be changed directly
 
 ## Visual Curve Editor
 
-The standard Home Assistant config flow can edit curve points, but it cannot render a rich draggable graph. The integration package includes a Lovelace card for visual editing:
+The standard Home Assistant config flow can edit curve points, but it cannot render a rich draggable graph. The integration package includes a Lovelace card with a full-width graph above the point editor. Points can be dragged directly in the graph or edited numerically below it:
 
 ```text
 custom_components/hvac_setpoint_curve/www/hvac-setpoint-curve-card.js
@@ -145,7 +145,7 @@ After installing and restarting the integration:
 2. Add this JavaScript module resource:
 
 ```text
-/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.2.0
+/hvac_setpoint_curve/hvac-setpoint-curve-card.js?v=1.2.1
 ```
 
 3. Add a manual card:

@@ -38,6 +38,8 @@ class HvacSetpointCurveCard extends HTMLElement {
           outdoorCurve: "Afzonderlijke stook- en koellijnen op basis van buitentemperatuur",
           customPreset: "Eigen preset",
           help: "Voeg minimaal 3 losse setpoints toe. Wijzigingen verschijnen direct in de curve.",
+          graphTitle: "Visuele stook-/koellijn",
+          graphHelp: "Sleep de punten in de grafiek of pas de waarden eronder aan.",
           outdoor: "Buiten °C",
           setpoint: "Doel °C",
           remove: "Verwijder",
@@ -63,6 +65,8 @@ class HvacSetpointCurveCard extends HTMLElement {
           outdoorCurve: "Separate heating and cooling curves based on outdoor temperature",
           customPreset: "Custom preset",
           help: "Add at least 3 individual setpoints. Changes appear in the curve immediately.",
+          graphTitle: "Visual heating/cooling curve",
+          graphHelp: "Drag points in the graph or edit the values below.",
           outdoor: "Outdoor °C",
           setpoint: "Target °C",
           remove: "Remove",
@@ -156,7 +160,9 @@ class HvacSetpointCurveCard extends HTMLElement {
         }
         canvas {
           width: 100%;
-          aspect-ratio: 16 / 9;
+          aspect-ratio: 16 / 8;
+          min-height: 240px;
+          max-height: 440px;
           border: 1px solid var(--divider-color, #d8d8d8);
           border-radius: 6px;
           background: var(--card-background-color, #fff);
@@ -164,9 +170,8 @@ class HvacSetpointCurveCard extends HTMLElement {
         }
         .editor {
           display: grid;
-          grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-          gap: 16px;
-          align-items: start;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 10px;
         }
         .editor-side {
           min-width: 0;
@@ -175,6 +180,13 @@ class HvacSetpointCurveCard extends HTMLElement {
           margin: 0 0 4px;
           font-size: 15px;
           font-weight: 600;
+        }
+        .graph-heading {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 4px 12px;
         }
         .rows {
           display: grid;
@@ -237,8 +249,10 @@ class HvacSetpointCurveCard extends HTMLElement {
           color: var(--primary-text-color, #111);
           font-size: 12px;
         }
-        @media (max-width: 760px) {
-          .editor { grid-template-columns: 1fr; }
+        @media (max-width: 520px) {
+          canvas { min-height: 200px; }
+          .row { grid-template-columns: 1fr 1fr; }
+          .row button { grid-column: 1 / -1; }
         }
       </style>
       <ha-card>
@@ -271,6 +285,11 @@ class HvacSetpointCurveCard extends HTMLElement {
           ${stabilizationMessages.map((message) => `<div class="stabilizing">${message}</div>`).join("")}
           <div class="muted demand-help">${ui.demandHelp}</div>
           <div class="editor">
+            <div class="graph-heading">
+              <p class="editor-title">${ui.graphTitle}</p>
+              <div class="muted">${ui.graphHelp}</div>
+            </div>
+            <canvas width="1100" height="550" aria-label="${ui.outdoorCurve}"></canvas>
             <div class="editor-side">
               <p class="editor-title">${ui.customPreset}</p>
               <div class="muted">${ui.help}</div>
@@ -296,7 +315,6 @@ class HvacSetpointCurveCard extends HTMLElement {
               </div>
               <div class="muted save-status" role="status">${this.dirty ? ui.unsaved : ""}</div>
             </div>
-            <canvas width="1100" height="620" aria-label="${ui.outdoorCurve}"></canvas>
           </div>
         </div>
       </ha-card>
