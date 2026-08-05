@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2026-08-05
+
+- Makes the visual curve graph full-width and prominent above the point editor, including on narrow dashboard cards.
+- Adds a clear hint that graph points can be dragged directly.
+
 ## 1.2.0 - 2026-08-05
 
 - Adds an automation-friendly night-mode switch with live number controls for independent heating and cooling target corrections.
