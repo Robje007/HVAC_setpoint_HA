@@ -307,6 +307,7 @@ async def test_cooling_waits_for_stability_and_resets_timer_after_rebound(hass, 
             CONF_COOLING_CLIMATE: entity_id,
             CONF_COOLING_CURVE_POINTS: [
                 {"outdoor_temp": -10.0, "setpoint": 22.0},
+                {"outdoor_temp": 15.0, "setpoint": 22.0},
                 {"outdoor_temp": 32.0, "setpoint": 22.0},
             ],
             CONF_COOLING_OFF_THRESHOLD: 16.0,
