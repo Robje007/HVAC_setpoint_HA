@@ -16,11 +16,10 @@
         }
       },
       "preset": {
-        "title": "Startprofielen",
-        "description": "Kies voor elke ingestelde bedrijfsmodus een eigen profiel. Agressieve koeling is alleen beschikbaar voor koeling.",
+        "title": "Kies een gebouwprofiel",
+        "description": "Comfort en Eco stellen verwarmen, de neutrale zone en koelen samen in. Kies Aangepast alleen als je dit zelf wilt bepalen.",
         "data": {
-          "cooling_preset": "Koelprofiel",
-          "heating_preset": "Verwarmingsprofiel"
+          "preset": "Gebouwprofiel"
         }
       },
       "thresholds": {
@@ -47,7 +46,21 @@
         "title": "Eigen koelcurve maken",
         "description": "Voer 3 tot 6 punten in. Elk punt koppelt een buitentemperatuur aan de gewenste koeltemperatuur.",
         "data": {
-          "point_count": "Aantal punten",
+          "point_count": "Aantal buitentemperatuurpunten",
+          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
+          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
+          "heating_setpoint_1": "Punt 1: verwarmen tot",
+          "cooling_setpoint_1": "Punt 1: koelen vanaf",
+          "heating_setpoint_2": "Punt 2: verwarmen tot",
+          "cooling_setpoint_2": "Punt 2: koelen vanaf",
+          "heating_setpoint_3": "Punt 3: verwarmen tot",
+          "cooling_setpoint_3": "Punt 3: koelen vanaf",
+          "heating_setpoint_4": "Punt 4: verwarmen tot",
+          "cooling_setpoint_4": "Punt 4: koelen vanaf",
+          "heating_setpoint_5": "Punt 5: verwarmen tot",
+          "cooling_setpoint_5": "Punt 5: koelen vanaf",
+          "heating_setpoint_6": "Punt 6: verwarmen tot",
+          "cooling_setpoint_6": "Punt 6: koelen vanaf",
           "outdoor_temp_1": "Punt 1: buitentemperatuur",
           "setpoint_1": "Punt 1: gewenste koeltemperatuur",
           "outdoor_temp_2": "Punt 2: buitentemperatuur",
@@ -66,7 +79,21 @@
         "title": "Eigen verwarmingscurve maken",
         "description": "Voer 3 tot 6 punten in. Elk punt koppelt een buitentemperatuur aan de gewenste verwarmingstemperatuur.",
         "data": {
-          "point_count": "Aantal punten",
+          "point_count": "Aantal buitentemperatuurpunten",
+          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
+          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
+          "heating_setpoint_1": "Punt 1: verwarmen tot",
+          "cooling_setpoint_1": "Punt 1: koelen vanaf",
+          "heating_setpoint_2": "Punt 2: verwarmen tot",
+          "cooling_setpoint_2": "Punt 2: koelen vanaf",
+          "heating_setpoint_3": "Punt 3: verwarmen tot",
+          "cooling_setpoint_3": "Punt 3: koelen vanaf",
+          "heating_setpoint_4": "Punt 4: verwarmen tot",
+          "cooling_setpoint_4": "Punt 4: koelen vanaf",
+          "heating_setpoint_5": "Punt 5: verwarmen tot",
+          "cooling_setpoint_5": "Punt 5: koelen vanaf",
+          "heating_setpoint_6": "Punt 6: verwarmen tot",
+          "cooling_setpoint_6": "Punt 6: koelen vanaf",
           "outdoor_temp_1": "Punt 1: buitentemperatuur",
           "setpoint_1": "Punt 1: gewenste verwarmingstemperatuur",
           "outdoor_temp_2": "Punt 2: buitentemperatuur",
@@ -82,10 +109,18 @@
         }
       },
       "custom_curve": {
-        "title": "Eigen stook-/koellijn maken",
-        "description": "Voer 3 tot 6 punten in. Deze ene curve wordt gebruikt voor zowel verwarmen als koelen.",
+        "title": "Eigen comfortband maken",
+        "description": "Stel verwarmen en koelen samen in. De ruimte ertussen is de neutrale zone waarin geen van beide wordt gevraagd.",
         "data": {
-          "point_count": "Aantal punten",
+          "point_count": "Aantal buitentemperatuurpunten",
+          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
+          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
+          "heating_setpoint_1": "Punt 1: verwarmen tot", "cooling_setpoint_1": "Punt 1: koelen vanaf",
+          "heating_setpoint_2": "Punt 2: verwarmen tot", "cooling_setpoint_2": "Punt 2: koelen vanaf",
+          "heating_setpoint_3": "Punt 3: verwarmen tot", "cooling_setpoint_3": "Punt 3: koelen vanaf",
+          "heating_setpoint_4": "Punt 4: verwarmen tot", "cooling_setpoint_4": "Punt 4: koelen vanaf",
+          "heating_setpoint_5": "Punt 5: verwarmen tot", "cooling_setpoint_5": "Punt 5: koelen vanaf",
+          "heating_setpoint_6": "Punt 6: verwarmen tot", "cooling_setpoint_6": "Punt 6: koelen vanaf",
           "outdoor_temp_1": "Punt 1: buitentemperatuur",
           "setpoint_1": "Punt 1: doeltemperatuur",
           "outdoor_temp_2": "Punt 2: buitentemperatuur",
@@ -120,15 +155,15 @@
         "title": "Instellingen voor de HVAC-curve",
         "menu_options": {
           "linked_entities": "Gekoppelde apparaten en sensoren",
-          "preset": "Verwarmings- en koelprofielen",
-          "custom_curve": "Eigen stook-/koellijn maken of aanpassen",
+          "preset": "Gebouwprofiel",
+          "custom_curve": "Eigen comfortband en omschakeling",
           "thresholds": "Buitentemperaturen voor starten en terugval",
-          "control_behavior": "Thermische traagheid en binnenvraag"
+          "control_behavior": "Geavanceerd gedrag"
         },
         "menu_option_descriptions": {
           "linked_entities": "Kies climate-apparaten en sensoren. De binnentemperatuur wordt automatisch uit elke climate-entiteit gelezen, tenzij je een afwijkende sensor kiest.",
-          "preset": "Kies per gekoppelde bedrijfsmodus een afzonderlijk ingebouwd profiel.",
-          "custom_curve": "Stel één gedeelde curve met 3-6 punten in voor zowel verwarmen als koelen.",
+          "preset": "Kies één samenhangend Comfort- of Eco-profiel voor de hele zone.",
+          "custom_curve": "Pas verwarmen, de neutrale zone, koelen en de buitengrenzen samen aan.",
           "thresholds": "Bepaal wanneer verwarmen en koelen mogen starten op basis van de buitentemperatuur.",
           "control_behavior": "Demp buitenschommelingen en stel in wanneer de binnenvraag een cyclus start en stopt."
         }
@@ -146,18 +181,25 @@
         }
       },
       "preset": {
-        "title": "Verwarmings- en koelprofielen",
-        "description": "Elk profiel wijzigt alleen de eigen curve. Agressieve koeling wordt niet aangeboden voor verwarming. Gebruik de aparte curve-editor voor eigen punten.",
+        "title": "Gebouwprofiel",
+        "description": "Eén profiel stelt verwarmen, de neutrale zone, koelen en de buitengrenzen samen in.",
         "data": {
-          "cooling_preset": "Koelprofiel",
-          "heating_preset": "Verwarmingsprofiel"
+          "preset": "Gebouwprofiel"
         }
       },
       "custom_curve": {
-        "title": "Eigen stook-/koellijn",
-        "description": "Voer 3 tot 6 punten in. Deze ene curve wordt gebruikt voor zowel verwarmen als koelen.",
+        "title": "Eigen comfortband",
+        "description": "Stel per buitentemperatuur in tot waar wordt verwarmd en vanaf wanneer wordt gekoeld. Verwarmen moet lager blijven dan koelen. Kies daarna de buitengrenzen.",
         "data": {
-          "point_count": "Aantal punten",
+          "point_count": "Aantal buitentemperatuurpunten",
+          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
+          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
+          "heating_setpoint_1": "Punt 1: verwarmen tot", "cooling_setpoint_1": "Punt 1: koelen vanaf",
+          "heating_setpoint_2": "Punt 2: verwarmen tot", "cooling_setpoint_2": "Punt 2: koelen vanaf",
+          "heating_setpoint_3": "Punt 3: verwarmen tot", "cooling_setpoint_3": "Punt 3: koelen vanaf",
+          "heating_setpoint_4": "Punt 4: verwarmen tot", "cooling_setpoint_4": "Punt 4: koelen vanaf",
+          "heating_setpoint_5": "Punt 5: verwarmen tot", "cooling_setpoint_5": "Punt 5: koelen vanaf",
+          "heating_setpoint_6": "Punt 6: verwarmen tot", "cooling_setpoint_6": "Punt 6: koelen vanaf",
           "outdoor_temp_1": "Punt 1: buitentemperatuur",
           "setpoint_1": "Punt 1: doeltemperatuur",
           "outdoor_temp_2": "Punt 2: buitentemperatuur",
@@ -257,13 +299,13 @@
     },
     "number": {
       "cooling_on_threshold": {
-        "name": "Koelen: nieuwe cyclus toestaan boven"
+        "name": "Koeling toegestaan boven buitentemperatuur"
       },
       "cooling_off_threshold": {
         "name": "Koelcurvesessie eindigt onder"
       },
       "heating_on_threshold": {
-        "name": "Verwarmen: nieuwe cyclus toestaan onder"
+        "name": "Verwarming toegestaan onder buitentemperatuur"
       },
       "heating_off_threshold": {
         "name": "Verwarmingscurvesessie eindigt boven"
@@ -276,14 +318,8 @@
       }
     },
     "select": {
-      "cooling_preset": {
-        "name": "Koelprofiel"
-      },
-      "heating_preset": {
-        "name": "Verwarmingsprofiel"
-      },
-      "preset": {
-        "name": "Curvepreset — Custom aanpassen via Configureren"
+      "building_profile": {
+        "name": "Gebouwprofiel"
       }
     },
     "switch": {

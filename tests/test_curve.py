@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.hvac_setpoint_curve.const import preset_curve
+from custom_components.hvac_setpoint_curve.const import preset_changeovers, preset_curve
 from custom_components.hvac_setpoint_curve.curve import (
     CurvePoint,
     computed_setpoint,
@@ -87,3 +87,14 @@ def test_heating_profiles_decrease_toward_mild_weather() -> None:
     for preset in ("comfort", "eco"):
         points = preset_curve(preset, "heating")
         assert points[0]["setpoint"] > points[-1]["setpoint"]
+
+
+def test_building_profiles_keep_a_realistic_neutral_zone() -> None:
+    """Built-in profiles keep heating below cooling and separate seasonal modes."""
+
+    for preset in ("comfort", "eco"):
+        heating = preset_curve(preset, "heating")
+        cooling = preset_curve(preset, "cooling")
+        assert all(heat["setpoint"] < cool["setpoint"] for heat, cool in zip(heating, cooling, strict=True))
+        heating_changeover, cooling_changeover = preset_changeovers(preset)
+        assert heating_changeover < cooling_changeover

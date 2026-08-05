@@ -89,32 +89,36 @@ PRESETS: Final = {
     "comfort": {
         "name": "Comfort",
         "points": [
-            {"outdoor_temp": -10.0, "setpoint": 22.0},
-            {"outdoor_temp": 5.0, "setpoint": 21.0},
-            {"outdoor_temp": 20.0, "setpoint": 23.0},
+            {"outdoor_temp": -10.0, "setpoint": 24.0},
+            {"outdoor_temp": 10.0, "setpoint": 24.0},
+            {"outdoor_temp": 20.0, "setpoint": 24.0},
             {"outdoor_temp": 32.0, "setpoint": 25.0},
         ],
         "heating_points": [
-            {"outdoor_temp": -10.0, "setpoint": 22.0},
-            {"outdoor_temp": 0.0, "setpoint": 21.0},
-            {"outdoor_temp": 12.0, "setpoint": 20.0},
-            {"outdoor_temp": 18.0, "setpoint": 18.0},
+            {"outdoor_temp": -10.0, "setpoint": 21.5},
+            {"outdoor_temp": 10.0, "setpoint": 21.0},
+            {"outdoor_temp": 20.0, "setpoint": 20.0},
+            {"outdoor_temp": 32.0, "setpoint": 18.0},
         ],
+        "heating_changeover": 18.0,
+        "cooling_changeover": 22.0,
     },
     "eco": {
         "name": "Eco / energy saving",
         "points": [
-            {"outdoor_temp": -10.0, "setpoint": 20.0},
-            {"outdoor_temp": 8.0, "setpoint": 19.0},
-            {"outdoor_temp": 24.0, "setpoint": 25.0},
-            {"outdoor_temp": 34.0, "setpoint": 27.0},
+            {"outdoor_temp": -10.0, "setpoint": 26.0},
+            {"outdoor_temp": 10.0, "setpoint": 26.0},
+            {"outdoor_temp": 20.0, "setpoint": 26.0},
+            {"outdoor_temp": 32.0, "setpoint": 27.0},
         ],
         "heating_points": [
             {"outdoor_temp": -10.0, "setpoint": 20.0},
-            {"outdoor_temp": 0.0, "setpoint": 19.5},
-            {"outdoor_temp": 12.0, "setpoint": 18.5},
-            {"outdoor_temp": 18.0, "setpoint": 17.0},
+            {"outdoor_temp": 10.0, "setpoint": 19.5},
+            {"outdoor_temp": 20.0, "setpoint": 18.5},
+            {"outdoor_temp": 32.0, "setpoint": 17.0},
         ],
+        "heating_changeover": 16.0,
+        "cooling_changeover": 24.0,
     },
     "rail_aggressive_cooling": {
         "name": "Aggressive cooling",
@@ -151,12 +155,23 @@ def preset_curve(preset_key: str, mode: str) -> list[dict[str, float]]:
     return list(preset["points"])
 
 
+def preset_changeovers(preset_key: str) -> tuple[float, float]:
+    """Return heating and cooling outdoor changeover temperatures."""
+
+    preset = PRESETS[preset_key]
+    return (
+        float(preset.get("heating_changeover", DEFAULT_HEATING_ON_THRESHOLD)),
+        float(preset.get("cooling_changeover", DEFAULT_COOLING_ON_THRESHOLD)),
+    )
+
+
 DEFAULT_PRESET: Final = "comfort"
 DEFAULT_CURVE_POINTS: Final = PRESETS[DEFAULT_PRESET]["points"]
 DEFAULT_COOLING_CURVE_POINTS: Final = PRESETS["comfort"]["points"]
 DEFAULT_HEATING_CURVE_POINTS: Final = PRESETS[DEFAULT_PRESET]["heating_points"]
 
 SERVICE_SET_CURVE: Final = "set_curve"
+SERVICE_SET_PROFILE: Final = "set_profile"
 SERVICE_RELOAD_PRESET: Final = "reload_preset"
 
 CONF_ENTRY_ID: Final = "entry_id"

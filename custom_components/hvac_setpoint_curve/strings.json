@@ -16,11 +16,10 @@
         }
       },
       "preset": {
-        "title": "Starting profiles",
-        "description": "Choose a separate profile for each configured operating mode. Aggressive cooling is available only for cooling.",
+        "title": "Choose a building profile",
+        "description": "Comfort and Eco configure heating, a neutral zone and cooling together. Choose Custom only if you want to set these values yourself.",
         "data": {
-          "cooling_preset": "Cooling profile",
-          "heating_preset": "Heating profile"
+          "preset": "Building profile"
         }
       },
       "thresholds": {
@@ -47,7 +46,21 @@
         "title": "Create custom cooling curve",
         "description": "Enter 3 to 6 points. Each point maps an outdoor temperature to the cooling target temperature.",
         "data": {
-          "point_count": "Number of points",
+          "point_count": "Number of outdoor points",
+          "heating_on_threshold": "Heating allowed below this outdoor temperature",
+          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
+          "heating_setpoint_1": "Point 1: heat up to",
+          "cooling_setpoint_1": "Point 1: cool from",
+          "heating_setpoint_2": "Point 2: heat up to",
+          "cooling_setpoint_2": "Point 2: cool from",
+          "heating_setpoint_3": "Point 3: heat up to",
+          "cooling_setpoint_3": "Point 3: cool from",
+          "heating_setpoint_4": "Point 4: heat up to",
+          "cooling_setpoint_4": "Point 4: cool from",
+          "heating_setpoint_5": "Point 5: heat up to",
+          "cooling_setpoint_5": "Point 5: cool from",
+          "heating_setpoint_6": "Point 6: heat up to",
+          "cooling_setpoint_6": "Point 6: cool from",
           "outdoor_temp_1": "Point 1 outdoor temperature",
           "setpoint_1": "Point 1 cooling target",
           "outdoor_temp_2": "Point 2 outdoor temperature",
@@ -66,7 +79,21 @@
         "title": "Create custom heating curve",
         "description": "Enter 3 to 6 points. Each point maps an outdoor temperature to the heating target temperature.",
         "data": {
-          "point_count": "Number of points",
+          "point_count": "Number of outdoor points",
+          "heating_on_threshold": "Heating allowed below this outdoor temperature",
+          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
+          "heating_setpoint_1": "Point 1: heat up to",
+          "cooling_setpoint_1": "Point 1: cool from",
+          "heating_setpoint_2": "Point 2: heat up to",
+          "cooling_setpoint_2": "Point 2: cool from",
+          "heating_setpoint_3": "Point 3: heat up to",
+          "cooling_setpoint_3": "Point 3: cool from",
+          "heating_setpoint_4": "Point 4: heat up to",
+          "cooling_setpoint_4": "Point 4: cool from",
+          "heating_setpoint_5": "Point 5: heat up to",
+          "cooling_setpoint_5": "Point 5: cool from",
+          "heating_setpoint_6": "Point 6: heat up to",
+          "cooling_setpoint_6": "Point 6: cool from",
           "outdoor_temp_1": "Point 1 outdoor temperature",
           "setpoint_1": "Point 1 heating target",
           "outdoor_temp_2": "Point 2 outdoor temperature",
@@ -82,10 +109,18 @@
         }
       },
       "custom_curve": {
-        "title": "Create custom heating/cooling curve",
-        "description": "Enter 3 to 6 points. This one curve is used for both heating and cooling.",
+        "title": "Create a custom comfort band",
+        "description": "Set heating and cooling limits together. The space between them is the neutral zone where neither is requested.",
         "data": {
-          "point_count": "Number of points",
+          "point_count": "Number of outdoor points",
+          "heating_on_threshold": "Heating allowed below this outdoor temperature",
+          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
+          "heating_setpoint_1": "Point 1: heat up to", "cooling_setpoint_1": "Point 1: cool from",
+          "heating_setpoint_2": "Point 2: heat up to", "cooling_setpoint_2": "Point 2: cool from",
+          "heating_setpoint_3": "Point 3: heat up to", "cooling_setpoint_3": "Point 3: cool from",
+          "heating_setpoint_4": "Point 4: heat up to", "cooling_setpoint_4": "Point 4: cool from",
+          "heating_setpoint_5": "Point 5: heat up to", "cooling_setpoint_5": "Point 5: cool from",
+          "heating_setpoint_6": "Point 6: heat up to", "cooling_setpoint_6": "Point 6: cool from",
           "outdoor_temp_1": "Point 1 outdoor temperature",
           "setpoint_1": "Point 1 target temperature",
           "outdoor_temp_2": "Point 2 outdoor temperature",
@@ -120,15 +155,15 @@
         "title": "HVAC curve settings",
         "menu_options": {
           "linked_entities": "Linked entities and sensors",
-          "preset": "Heating and cooling profiles",
-          "custom_curve": "Create or edit custom heating/cooling curve",
+          "preset": "Building profile",
+          "custom_curve": "Custom comfort band and changeover",
           "thresholds": "Outdoor start and fallback temperatures",
-          "control_behavior": "Thermal inertia and indoor demand"
+          "control_behavior": "Advanced behavior"
         },
         "menu_option_descriptions": {
           "linked_entities": "Choose climate entities and sensors. Indoor temperature is read automatically from each climate entity unless an override sensor is selected.",
-          "preset": "Select a separate built-in profile for each linked operating mode.",
-          "custom_curve": "Set one shared 3-6 point curve for both heating and cooling.",
+          "preset": "Choose one coherent Comfort or Eco profile for the complete zone.",
+          "custom_curve": "Edit heating, the neutral zone, cooling and outdoor changeover limits together.",
           "thresholds": "Choose when heating and cooling may start based on outdoor temperature.",
           "control_behavior": "Smooth outdoor changes and configure when indoor demand starts and stops a cycle."
         }
@@ -146,18 +181,25 @@
         }
       },
       "preset": {
-        "title": "Heating and cooling profiles",
-        "description": "Each profile changes only its own curve. Aggressive cooling is not offered for heating. Use the separate custom-curve editor for custom points.",
+        "title": "Building profile",
+        "description": "One profile configures heating, the neutral zone, cooling and outdoor changeover together.",
         "data": {
-          "cooling_preset": "Cooling profile",
-          "heating_preset": "Heating profile"
+          "preset": "Building profile"
         }
       },
       "custom_curve": {
-        "title": "Custom heating/cooling curve",
-        "description": "Enter 3 to 6 points. This one curve is used for both heating and cooling.",
+        "title": "Custom comfort band",
+        "description": "For each outdoor temperature, set when heating stops and cooling starts. Heating must remain below cooling. Then choose the outdoor changeover limits.",
         "data": {
-          "point_count": "Number of points",
+          "point_count": "Number of outdoor points",
+          "heating_on_threshold": "Heating allowed below this outdoor temperature",
+          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
+          "heating_setpoint_1": "Point 1: heat up to", "cooling_setpoint_1": "Point 1: cool from",
+          "heating_setpoint_2": "Point 2: heat up to", "cooling_setpoint_2": "Point 2: cool from",
+          "heating_setpoint_3": "Point 3: heat up to", "cooling_setpoint_3": "Point 3: cool from",
+          "heating_setpoint_4": "Point 4: heat up to", "cooling_setpoint_4": "Point 4: cool from",
+          "heating_setpoint_5": "Point 5: heat up to", "cooling_setpoint_5": "Point 5: cool from",
+          "heating_setpoint_6": "Point 6: heat up to", "cooling_setpoint_6": "Point 6: cool from",
           "outdoor_temp_1": "Point 1 outdoor temperature",
           "setpoint_1": "Point 1 target temperature",
           "outdoor_temp_2": "Point 2 outdoor temperature",
@@ -257,13 +299,13 @@
     },
     "number": {
       "cooling_on_threshold": {
-        "name": "Cooling: allow new cycle above"
+        "name": "Cooling allowed above outdoor"
       },
       "cooling_off_threshold": {
         "name": "Cooling curve session ends below"
       },
       "heating_on_threshold": {
-        "name": "Heating: allow new cycle below"
+        "name": "Heating allowed below outdoor"
       },
       "heating_off_threshold": {
         "name": "Heating curve session ends above"
@@ -276,14 +318,8 @@
       }
     },
     "select": {
-      "cooling_preset": {
-        "name": "Cooling profile"
-      },
-      "heating_preset": {
-        "name": "Heating profile"
-      },
-      "preset": {
-        "name": "Curve preset — edit Custom via Configure"
+      "building_profile": {
+        "name": "Building profile"
       }
     },
     "switch": {

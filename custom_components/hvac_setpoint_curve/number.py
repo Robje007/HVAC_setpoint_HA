@@ -20,10 +20,8 @@ from .const import (
     CONF_HEATING_ON_THRESHOLD,
     CONF_SENSOR_ONLY,
     DEFAULT_COOLING_NIGHT_OFFSET,
-    DEFAULT_COOLING_OFF_THRESHOLD,
     DEFAULT_COOLING_ON_THRESHOLD,
     DEFAULT_HEATING_NIGHT_OFFSET,
-    DEFAULT_HEATING_OFF_THRESHOLD,
     DEFAULT_HEATING_ON_THRESHOLD,
     DOMAIN,
     THRESHOLD_MAX,
@@ -53,11 +51,6 @@ async def async_setup_entry(
         entities.extend(
             [
                 ThresholdNumber(coordinator, CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD),
-                ThresholdNumber(
-                    coordinator,
-                    CONF_COOLING_OFF_THRESHOLD,
-                    DEFAULT_COOLING_OFF_THRESHOLD,
-                ),
                 NightOffsetNumber(
                     coordinator,
                     CONF_COOLING_NIGHT_OFFSET,
@@ -70,11 +63,6 @@ async def async_setup_entry(
         entities.extend(
             [
                 ThresholdNumber(coordinator, CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD),
-                ThresholdNumber(
-                    coordinator,
-                    CONF_HEATING_OFF_THRESHOLD,
-                    DEFAULT_HEATING_OFF_THRESHOLD,
-                ),
                 NightOffsetNumber(
                     coordinator,
                     CONF_HEATING_NIGHT_OFFSET,
@@ -114,6 +102,10 @@ class ThresholdNumber(HvacSetpointEntity, NumberEntity):
         """Persist a threshold change to config entry options."""
 
         candidate = {**self.coordinator.merged_options, self._key: round(float(value), 1)}
+        if self._key == CONF_HEATING_ON_THRESHOLD:
+            candidate[CONF_HEATING_OFF_THRESHOLD] = candidate[self._key] + 1.5
+        elif self._key == CONF_COOLING_ON_THRESHOLD:
+            candidate[CONF_COOLING_OFF_THRESHOLD] = candidate[self._key] - 1.5
         error = threshold_error(
             candidate,
             cooling_enabled=bool(candidate.get(CONF_COOLING_CLIMATE) or candidate.get(CONF_SENSOR_ONLY)),
@@ -123,6 +115,10 @@ class ThresholdNumber(HvacSetpointEntity, NumberEntity):
             raise HomeAssistantError(_ERROR_MESSAGES[error])
 
         new_options = {**self.coordinator.config_entry.options, self._key: candidate[self._key]}
+        if self._key == CONF_HEATING_ON_THRESHOLD:
+            new_options[CONF_HEATING_OFF_THRESHOLD] = candidate[self._key] + 1.5
+        elif self._key == CONF_COOLING_ON_THRESHOLD:
+            new_options[CONF_COOLING_OFF_THRESHOLD] = candidate[self._key] - 1.5
         self.coordinator.hass.config_entries.async_update_entry(
             self.coordinator.config_entry,
             options=new_options,

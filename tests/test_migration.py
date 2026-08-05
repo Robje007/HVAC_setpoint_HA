@@ -43,7 +43,7 @@ async def test_custom_curves_migrate_to_one_shared_curve(hass) -> None:
     entry.add_to_hass(hass)
 
     assert await async_migrate_entry(hass, entry)
-    assert entry.version == 4
+    assert entry.version == 5
     assert entry.options[CONF_CURVE_POINTS] == shared
     assert entry.options[CONF_COOLING_CURVE_POINTS] == shared
     assert entry.options[CONF_HEATING_CURVE_POINTS] == shared
@@ -66,6 +66,24 @@ async def test_two_point_curve_migrates_to_three_points(hass) -> None:
     entry.add_to_hass(hass)
 
     assert await async_migrate_entry(hass, entry)
-    assert entry.version == 4
+    assert entry.version == 5
     assert entry.options[CONF_CURVE_POINTS][1] == {"outdoor_temp": 10.0, "setpoint": 22.0}
     assert len(entry.options[CONF_CURVE_POINTS]) == 3
+
+
+async def test_separate_mode_profiles_migrate_to_one_custom_building_profile(hass) -> None:
+    """Different legacy mode profiles preserve their curves under one Custom label."""
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=4,
+        data={},
+        options={CONF_COOLING_PRESET: "comfort", CONF_HEATING_PRESET: "eco"},
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+    assert entry.version == 5
+    assert entry.options[CONF_PRESET] == PRESET_CUSTOM
+    assert entry.options[CONF_COOLING_PRESET] == PRESET_CUSTOM
+    assert entry.options[CONF_HEATING_PRESET] == PRESET_CUSTOM
