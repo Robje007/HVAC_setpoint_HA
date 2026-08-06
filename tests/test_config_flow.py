@@ -16,11 +16,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.hvac_setpoint_curve.const import (
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
-    CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
-    CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_INDOOR_SETTLING_HOURS,
     CONF_INDOOR_START_DELTA,
@@ -214,8 +212,6 @@ async def test_options_custom_curve_saves_a_combined_comfort_band(hass) -> None:
             "outdoor_temp_3": 30,
             "heating_setpoint_3": 19,
             "cooling_setpoint_3": 25,
-            CONF_HEATING_ON_THRESHOLD: 18,
-            CONF_COOLING_ON_THRESHOLD: 22,
         },
     )
 
@@ -249,8 +245,8 @@ async def test_profile_flow_has_one_building_profile_field(hass) -> None:
     assert "rail_aggressive_cooling" not in values
 
 
-async def test_options_profile_updates_both_curves_and_changeovers(hass) -> None:
-    """One profile selection updates the complete building behavior."""
+async def test_options_profile_updates_both_automatic_comfort_curves(hass) -> None:
+    """One profile selection updates the complete automatic comfort band."""
 
     entry = MockConfigEntry(
         domain=DOMAIN,

@@ -13,13 +13,9 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
-    CONF_COOLING_OFF_THRESHOLD,
-    CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
-    CONF_HEATING_OFF_THRESHOLD,
-    CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_HUMIDITY_SENSOR,
     CONF_INDOOR_SETTLING_HOURS,
@@ -32,9 +28,7 @@ from .const import (
     CONF_PRESET,
     CONF_SENSOR_ONLY,
     DEFAULT_COOLING_CURVE_POINTS,
-    DEFAULT_COOLING_ON_THRESHOLD,
     DEFAULT_HEATING_CURVE_POINTS,
-    DEFAULT_HEATING_ON_THRESHOLD,
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
@@ -51,7 +45,6 @@ from .const import (
     SETPOINT_MIN,
     TEMPERATURE_MAX,
     TEMPERATURE_MIN,
-    preset_changeovers,
     preset_curve,
     preset_name,
 )
@@ -118,7 +111,7 @@ def _mode_preset_schema(hass: Any, options: dict[str, Any], *, include_empty: bo
 
 
 def _apply_mode_presets(target: dict[str, Any], selected: dict[str, Any]) -> bool:
-    """Apply one profile to heating, cooling and changeover behavior."""
+    """Apply one profile to the heating and cooling comfort band."""
 
     preset = selected[CONF_PRESET]
     preset = PRESET_CUSTOM if preset == PRESET_EMPTY else preset
@@ -129,11 +122,6 @@ def _apply_mode_presets(target: dict[str, Any], selected: dict[str, Any]) -> boo
         return True
     target[CONF_COOLING_CURVE_POINTS] = preset_curve(preset, "cooling")
     target[CONF_HEATING_CURVE_POINTS] = preset_curve(preset, "heating")
-    heating_changeover, cooling_changeover = preset_changeovers(preset)
-    target[CONF_HEATING_ON_THRESHOLD] = heating_changeover
-    target[CONF_HEATING_OFF_THRESHOLD] = heating_changeover + 1.5
-    target[CONF_COOLING_ON_THRESHOLD] = cooling_changeover
-    target[CONF_COOLING_OFF_THRESHOLD] = cooling_changeover - 1.5
     return False
 
 
@@ -251,7 +239,6 @@ def _curve_schema(
 
     heating_points = heating_points or parse_curve_points(DEFAULT_HEATING_CURVE_POINTS)
     cooling_points = cooling_points or parse_curve_points(DEFAULT_COOLING_CURVE_POINTS)
-    options = options or {}
     point_count = min(len(heating_points), len(cooling_points))
     fields: dict[vol.Marker, Any] = {
         vol.Required("point_count", default=point_count): selector.NumberSelector(
@@ -291,22 +278,6 @@ def _curve_schema(
                     unit_of_measurement="°C",
                 )
             )
-    fields[
-        vol.Required(
-            CONF_HEATING_ON_THRESHOLD,
-            default=options.get(CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD),
-        )
-    ] = selector.NumberSelector(
-        selector.NumberSelectorConfig(min=5, max=30, step=0.5, unit_of_measurement="°C")
-    )
-    fields[
-        vol.Required(
-            CONF_COOLING_ON_THRESHOLD,
-            default=options.get(CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD),
-        )
-    ] = selector.NumberSelector(
-        selector.NumberSelectorConfig(min=5, max=35, step=0.5, unit_of_measurement="°C")
-    )
     return vol.Schema(fields)
 
 
@@ -397,8 +368,6 @@ class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 heating_points, cooling_points = _points_from_slots(user_input)
-                if float(user_input[CONF_HEATING_ON_THRESHOLD]) >= float(user_input[CONF_COOLING_ON_THRESHOLD]):
-                    raise ValueError("overlapping_changeover")
             except ValueError:
                 errors["base"] = "invalid_curve"
             else:
@@ -407,12 +376,6 @@ class HvacSetpointConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._setup_data[CONF_HEATING_PRESET] = PRESET_CUSTOM
                 self._setup_data[CONF_COOLING_CURVE_POINTS] = cooling_points
                 self._setup_data[CONF_HEATING_CURVE_POINTS] = heating_points
-                heating_changeover = float(user_input[CONF_HEATING_ON_THRESHOLD])
-                cooling_changeover = float(user_input[CONF_COOLING_ON_THRESHOLD])
-                self._setup_data[CONF_HEATING_ON_THRESHOLD] = heating_changeover
-                self._setup_data[CONF_HEATING_OFF_THRESHOLD] = heating_changeover + 1.5
-                self._setup_data[CONF_COOLING_ON_THRESHOLD] = cooling_changeover
-                self._setup_data[CONF_COOLING_OFF_THRESHOLD] = cooling_changeover - 1.5
                 return await self._async_finish_setup()
 
         heating = parse_curve_points(self._setup_data.get(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS))
@@ -499,8 +462,6 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             try:
                 heating_points, cooling_points = _points_from_slots(user_input)
-                if float(user_input[CONF_HEATING_ON_THRESHOLD]) >= float(user_input[CONF_COOLING_ON_THRESHOLD]):
-                    raise ValueError("overlapping_changeover")
             except ValueError:
                 errors["base"] = "invalid_curve"
             else:
@@ -512,16 +473,6 @@ class HvacSetpointOptionsFlow(config_entries.OptionsFlow):
                     CONF_COOLING_PRESET: PRESET_CUSTOM,
                     CONF_HEATING_PRESET: PRESET_CUSTOM,
                 }
-                heating_changeover = float(user_input[CONF_HEATING_ON_THRESHOLD])
-                cooling_changeover = float(user_input[CONF_COOLING_ON_THRESHOLD])
-                new_options.update(
-                    {
-                        CONF_HEATING_ON_THRESHOLD: heating_changeover,
-                        CONF_HEATING_OFF_THRESHOLD: heating_changeover + 1.5,
-                        CONF_COOLING_ON_THRESHOLD: cooling_changeover,
-                        CONF_COOLING_OFF_THRESHOLD: cooling_changeover - 1.5,
-                    }
-                )
                 return self.async_create_entry(title="", data=new_options)
 
         heating = parse_curve_points(self._options.get(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS))

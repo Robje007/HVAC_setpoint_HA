@@ -109,10 +109,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         entry = next((item for item in hass.config_entries.async_entries(DOMAIN) if item.entry_id == entry_id), None)
         if entry is None:
             raise ValueError(f"No HVAC Setpoint Curve entry found for entry_id {entry_id}")
-        heating_changeover = float(call.data["heating_changeover"])
-        cooling_changeover = float(call.data["cooling_changeover"])
-        if heating_changeover >= cooling_changeover:
-            raise ValueError("Heating changeover must be lower than cooling changeover")
         heating_points = parse_curve_points(call.data["heating_points"])
         cooling_points = parse_curve_points(call.data["cooling_points"])
         if len(heating_points) != len(cooling_points) or any(
@@ -127,10 +123,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             CONF_HEATING_PRESET: PRESET_CUSTOM,
             CONF_HEATING_CURVE_POINTS: serialize_curve_points(heating_points),
             CONF_COOLING_CURVE_POINTS: serialize_curve_points(cooling_points),
-            "heating_on_threshold": heating_changeover,
-            "heating_off_threshold": heating_changeover + 1.5,
-            "cooling_on_threshold": cooling_changeover,
-            "cooling_off_threshold": cooling_changeover - 1.5,
         }
         hass.config_entries.async_update_entry(entry, options=options)
         coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
@@ -146,8 +138,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 vol.Required(CONF_ENTRY_ID): str,
                 vol.Required("heating_points"): list,
                 vol.Required("cooling_points"): list,
-                vol.Required("heating_changeover"): vol.Coerce(float),
-                vol.Required("cooling_changeover"): vol.Coerce(float),
             }
         ),
     )
@@ -171,7 +161,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: HvacSetpointConfigEntry)
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
 
-    for legacy_key in ("cooling_off_threshold", "heating_off_threshold"):
+    for legacy_key in (
+        "cooling_on_threshold",
+        "cooling_off_threshold",
+        "heating_on_threshold",
+        "heating_off_threshold",
+    ):
         entity_id = entity_registry.async_get_entity_id("number", DOMAIN, f"{entry.entry_id}_{legacy_key}")
         if entity_id is not None:
             entity_registry.async_remove(entity_id)

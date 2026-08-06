@@ -41,8 +41,6 @@ class HvacSetpointCurveCard extends HTMLElement {
           graphHelp: "Pas de eenvoudige waarden onder de grafiek aan; de lijnen veranderen direct mee.",
           heatingTarget: "Verwarmen tot",
           coolingTarget: "Koelen vanaf",
-          heatingChangeover: "Verwarming toegestaan onder buiten",
-          coolingChangeover: "Koeling toegestaan boven buiten",
           neutralZone: "Daartussen blijft het systeem neutraal.",
           outdoor: "Buiten °C",
           setpoint: "Doel °C",
@@ -73,8 +71,6 @@ class HvacSetpointCurveCard extends HTMLElement {
           graphHelp: "Edit the simple values below; both lines update immediately.",
           heatingTarget: "Heat up to",
           coolingTarget: "Cool from",
-          heatingChangeover: "Heating allowed below outdoor",
-          coolingChangeover: "Cooling allowed above outdoor",
           neutralZone: "Between these limits the system remains neutral.",
           outdoor: "Outdoor °C",
           setpoint: "Target °C",
@@ -122,8 +118,6 @@ class HvacSetpointCurveCard extends HTMLElement {
         heating_setpoint: Number(heating[index].setpoint),
         cooling_setpoint: Number(cooling[index].setpoint),
       }));
-      this.heatingChangeover = Number(attrs.heating_changeover ?? 18);
-      this.coolingChangeover = Number(attrs.cooling_changeover ?? 22);
     }
 
     this.shadowRoot.innerHTML = `
@@ -230,15 +224,6 @@ class HvacSetpointCurveCard extends HTMLElement {
           gap: 8px;
           margin-top: 12px;
         }
-        .changeovers {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          margin-top: 14px;
-          padding: 12px;
-          border-radius: 6px;
-          background: color-mix(in srgb, var(--primary-color, #03a9f4) 8%, transparent);
-        }
         .muted {
           color: var(--secondary-text-color, #666);
           font-size: 12px;
@@ -321,15 +306,6 @@ class HvacSetpointCurveCard extends HTMLElement {
                   )
                   .join("")}
               </div>
-              <div class="changeovers">
-                <label>${ui.heatingChangeover}
-                  <input data-changeover="heating" type="number" step="0.5" value="${this.heatingChangeover}">
-                </label>
-                <label>${ui.coolingChangeover}
-                  <input data-changeover="cooling" type="number" step="0.5" value="${this.coolingChangeover}">
-                </label>
-                <div class="muted">${ui.neutralZone}</div>
-              </div>
               <div class="actions">
                 <button data-add ${this.points.length >= 6 ? "disabled" : ""}>${ui.add}</button>
                 <button class="save" data-save ${!entryId || this.points.length < 3 ? "disabled" : ""}>${ui.saveCurve}</button>
@@ -360,15 +336,6 @@ class HvacSetpointCurveCard extends HTMLElement {
         const index = Number(input.dataset.index);
         this.points[index][input.dataset.key] = Number(input.value);
         this.normalize(false);
-        this.dirty = true;
-        this.setSaveStatus(ui.unsaved);
-        this.draw();
-      });
-    });
-    this.shadowRoot.querySelectorAll("input[data-changeover]").forEach((input) => {
-      input.addEventListener("input", () => {
-        if (input.dataset.changeover === "heating") this.heatingChangeover = Number(input.value);
-        else this.coolingChangeover = Number(input.value);
         this.dirty = true;
         this.setSaveStatus(ui.unsaved);
         this.draw();
@@ -417,8 +384,6 @@ class HvacSetpointCurveCard extends HTMLElement {
             outdoor_temp: point.outdoor_temp,
             setpoint: point.cooling_setpoint,
           })),
-          heating_changeover: this.heatingChangeover,
-          cooling_changeover: this.coolingChangeover,
         });
         this.dirty = false;
         this.setSaveStatus(ui.saved);
@@ -514,24 +479,6 @@ class HvacSetpointCurveCard extends HTMLElement {
       ctx.fillText(String(setpoint), 16, y + 7);
     }
 
-    const heatingX = this.xy({ outdoor_temp: this.heatingChangeover, setpoint: b.minY }, canvas).x;
-    const coolingX = this.xy({ outdoor_temp: this.coolingChangeover, setpoint: b.minY }, canvas).x;
-    ctx.fillStyle = "rgba(16, 185, 129, 0.10)";
-    ctx.fillRect(heatingX, b.pad, Math.max(0, coolingX - heatingX), canvas.height - b.pad * 2);
-    ctx.setLineDash([12, 8]);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#dc2626";
-    ctx.beginPath();
-    ctx.moveTo(heatingX, b.pad);
-    ctx.lineTo(heatingX, canvas.height - b.pad);
-    ctx.stroke();
-    ctx.strokeStyle = "#0284c7";
-    ctx.beginPath();
-    ctx.moveTo(coolingX, b.pad);
-    ctx.lineTo(coolingX, canvas.height - b.pad);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
     const sorted = [...this.points].sort((a, b) => a.outdoor_temp - b.outdoor_temp);
     if (sorted.length > 1) {
       ctx.fillStyle = "rgba(16, 185, 129, 0.14)";
@@ -585,5 +532,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "hvac-setpoint-curve-card",
   name: "HVAC Building Profile",
-  description: "Visual editor for heating, the neutral comfort zone, cooling and outdoor changeover.",
+  description: "Visual editor for automatic heating, the neutral comfort zone and cooling.",
 });

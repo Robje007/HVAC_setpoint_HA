@@ -23,15 +23,12 @@ from .const import (
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
     CONF_COOLING_NIGHT_OFFSET,
-    CONF_COOLING_OFF_THRESHOLD,
-    CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
+    CONF_COOLING_SETPOINT_CORRECTION,
     CONF_CURVE_POINTS,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
     CONF_HEATING_NIGHT_OFFSET,
-    CONF_HEATING_OFF_THRESHOLD,
-    CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_HUMIDITY_SENSOR,
     CONF_INDOOR_SETTLING_HOURS,
@@ -47,12 +44,9 @@ from .const import (
     DEFAULT_CONTROLLER_ENABLED,
     DEFAULT_COOLING_CURVE_POINTS,
     DEFAULT_COOLING_NIGHT_OFFSET,
-    DEFAULT_COOLING_OFF_THRESHOLD,
-    DEFAULT_COOLING_ON_THRESHOLD,
+    DEFAULT_COOLING_SETPOINT_CORRECTION,
     DEFAULT_HEATING_CURVE_POINTS,
     DEFAULT_HEATING_NIGHT_OFFSET,
-    DEFAULT_HEATING_OFF_THRESHOLD,
-    DEFAULT_HEATING_ON_THRESHOLD,
     DEFAULT_INDOOR_SETTLING_HOURS,
     DEFAULT_INDOOR_START_DELTA,
     DEFAULT_INDOOR_STOP_DELTA,
@@ -62,8 +56,6 @@ from .const import (
     DOMAIN,
 )
 from .curve import computed_setpoint
-from .hysteresis import decide_cooling, decide_heating
-from .validation import threshold_error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -148,15 +140,9 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
         options = self.merged_options
         previous = self.data or HvacCurveData()
         previous_cooling_active = self._previous_mode_active(
-            options,
-            CONF_COOLING_CLIMATE,
-            HVACMode.COOL,
             previous.cooling_active,
         )
         previous_heating_active = self._previous_mode_active(
-            options,
-            CONF_HEATING_CLIMATE,
-            HVACMode.HEAT,
             previous.heating_active,
         )
         outdoor_temp = self._get_outdoor_temperature(options)
@@ -180,15 +166,22 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 )
             return data
 
+        now = dt_util.utcnow()
+        outdoor_average = _time_weighted_average(
+            self._outdoor_samples,
+            outdoor_temp,
+            float(options.get(CONF_OUTDOOR_AVERAGING_HOURS, DEFAULT_OUTDOOR_AVERAGING_HOURS)),
+            now,
+        )
         cooling_curve_setpoint = computed_setpoint(
             _curve_for_mode(options, CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS),
-            outdoor_temp,
+            outdoor_average,
             humidity,
             humidity_direction=-1,
         )
         heating_curve_setpoint = computed_setpoint(
             _curve_for_mode(options, CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS),
-            outdoor_temp,
+            outdoor_average,
             humidity,
         )
         night_mode = bool(options.get(CONF_NIGHT_MODE, DEFAULT_NIGHT_MODE))
@@ -201,13 +194,6 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             heating_curve_setpoint,
             night_mode,
             options.get(CONF_HEATING_NIGHT_OFFSET, DEFAULT_HEATING_NIGHT_OFFSET),
-        )
-        now = dt_util.utcnow()
-        outdoor_average = _time_weighted_average(
-            self._outdoor_samples,
-            outdoor_temp,
-            float(options.get(CONF_OUTDOOR_AVERAGING_HOURS, DEFAULT_OUTDOOR_AVERAGING_HOURS)),
-            now,
         )
         cooling_indoor, cooling_indoor_source = self._get_indoor_temperature(options, CONF_COOLING_CLIMATE)
         heating_indoor, heating_indoor_source = self._get_indoor_temperature(options, CONF_HEATING_CLIMATE)
@@ -232,22 +218,12 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             heating_active=previous_heating_active,
         )
 
-        validation_error = threshold_error(
-            options,
-            cooling_enabled=bool(options.get(CONF_COOLING_CLIMATE) or options.get(CONF_SENSOR_ONLY)),
-            heating_enabled=bool(options.get(CONF_HEATING_CLIMATE) or options.get(CONF_SENSOR_ONLY)),
-        )
         if not controller_enabled:
-            data.cooling_active = False
-            data.heating_active = False
-        elif validation_error:
-            _LOGGER.error("Not controlling HVAC for %s: %s", self.config_entry.title, validation_error)
             data.cooling_active = False
             data.heating_active = False
         else:
             data.cooling_active = self._cooling_active(
                 options,
-                outdoor_average,
                 previous_cooling_active,
                 cooling_indoor,
                 cooling_target_setpoint,
@@ -255,13 +231,12 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             )
             data.heating_active = self._heating_active(
                 options,
-                outdoor_average,
                 previous_heating_active,
                 heating_indoor,
                 heating_target_setpoint,
                 now,
             )
-            self._resolve_shared_entity_conflict(options, data)
+            self._resolve_mode_conflict(options, data)
             data.cooling_stabilizing = data.cooling_active and self._cooling_satisfied_since is not None
             data.heating_stabilizing = data.heating_active and self._heating_satisfied_since is not None
 
@@ -279,13 +254,12 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             data.target_setpoint = data.cooling_target_setpoint
         return data
 
-    def _resolve_shared_entity_conflict(self, options: dict[str, Any], data: HvacCurveData) -> None:
-        """Keep shared or interlocked equipment in exactly one operating mode."""
+    def _resolve_mode_conflict(self, options: dict[str, Any], data: HvacCurveData) -> None:
+        """Keep the building in exactly one operating mode."""
 
         entity_id = options.get(CONF_COOLING_CLIMATE)
         heating_entity = options.get(CONF_HEATING_CLIMATE)
-        interlocked = bool(options.get(CONF_OPPOSITE_ENTITY_INTERLOCK, DEFAULT_OPPOSITE_ENTITY_INTERLOCK))
-        if not entity_id or not heating_entity or (entity_id != heating_entity and not interlocked):
+        if not entity_id or not heating_entity:
             return
         if not data.cooling_active or not data.heating_active:
             return
@@ -415,23 +389,17 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
 
     def _previous_mode_active(
         self,
-        options: dict[str, Any],
-        climate_key: str,
-        hvac_mode: HVACMode,
         previous_active: bool,
     ) -> bool:
-        """Restore an active cycle from the climate mode on the first refresh."""
+        """Return controller state without inferring demand from a climate mode."""
 
         if self.data is not None:
             return previous_active
-        climate_entity = options.get(climate_key)
-        state = self.hass.states.get(climate_entity) if climate_entity else None
-        return state is not None and state.state == hvac_mode
+        return False
 
     def _cooling_active(
         self,
         options: dict[str, Any],
-        outdoor_temp: float,
         previous_active: bool,
         indoor_temp: float | None,
         target_setpoint: float,
@@ -439,42 +407,28 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
     ) -> bool:
         """Return the cooling state after applying hysteresis."""
 
-        if indoor_temp is not None:
-            start_delta = float(options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA))
-            stop_delta = float(options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA))
-            if previous_active:
-                outdoor_allows_release = outdoor_temp < float(
-                    options.get(CONF_COOLING_OFF_THRESHOLD, DEFAULT_COOLING_OFF_THRESHOLD)
-                )
-                indoor_satisfied = indoor_temp <= target_setpoint + stop_delta
-                if not outdoor_allows_release or not indoor_satisfied:
-                    self._cooling_satisfied_since = None
-                    return True
-                if self._cooling_satisfied_since is None:
-                    self._cooling_satisfied_since = now
-                settling_hours = float(options.get(CONF_INDOOR_SETTLING_HOURS, DEFAULT_INDOOR_SETTLING_HOURS))
-                if now - self._cooling_satisfied_since < timedelta(hours=settling_hours):
-                    return True
+        if indoor_temp is None:
+            self._cooling_satisfied_since = None
+            return False
+        start_delta = float(options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA))
+        stop_delta = float(options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA))
+        if previous_active:
+            if indoor_temp > target_setpoint + stop_delta:
                 self._cooling_satisfied_since = None
-                return False
+                return True
+            if self._cooling_satisfied_since is None:
+                self._cooling_satisfied_since = now
+            settling_hours = float(options.get(CONF_INDOOR_SETTLING_HOURS, DEFAULT_INDOOR_SETTLING_HOURS))
+            if now - self._cooling_satisfied_since < timedelta(hours=settling_hours):
+                return True
             self._cooling_satisfied_since = None
-            if indoor_temp < target_setpoint + start_delta:
-                return False
-        else:
-            self._cooling_satisfied_since = None
-
-        decision = decide_cooling(
-            outdoor_temp,
-            previous_active,
-            float(options.get(CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD)),
-            float(options.get(CONF_COOLING_OFF_THRESHOLD, DEFAULT_COOLING_OFF_THRESHOLD)),
-        )
-        return decision.active
+            return False
+        self._cooling_satisfied_since = None
+        return indoor_temp >= target_setpoint + start_delta
 
     def _heating_active(
         self,
         options: dict[str, Any],
-        outdoor_temp: float,
         previous_active: bool,
         indoor_temp: float | None,
         target_setpoint: float,
@@ -482,42 +436,33 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
     ) -> bool:
         """Return the heating state after applying hysteresis."""
 
-        if indoor_temp is not None:
-            start_delta = float(options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA))
-            stop_delta = float(options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA))
-            if previous_active:
-                outdoor_allows_release = outdoor_temp > float(
-                    options.get(CONF_HEATING_OFF_THRESHOLD, DEFAULT_HEATING_OFF_THRESHOLD)
-                )
-                indoor_satisfied = indoor_temp >= target_setpoint - stop_delta
-                if not outdoor_allows_release or not indoor_satisfied:
-                    self._heating_satisfied_since = None
-                    return True
-                if self._heating_satisfied_since is None:
-                    self._heating_satisfied_since = now
-                settling_hours = float(options.get(CONF_INDOOR_SETTLING_HOURS, DEFAULT_INDOOR_SETTLING_HOURS))
-                if now - self._heating_satisfied_since < timedelta(hours=settling_hours):
-                    return True
+        if indoor_temp is None:
+            self._heating_satisfied_since = None
+            return False
+        start_delta = float(options.get(CONF_INDOOR_START_DELTA, DEFAULT_INDOOR_START_DELTA))
+        stop_delta = float(options.get(CONF_INDOOR_STOP_DELTA, DEFAULT_INDOOR_STOP_DELTA))
+        if previous_active:
+            if indoor_temp < target_setpoint - stop_delta:
                 self._heating_satisfied_since = None
-                return False
+                return True
+            if self._heating_satisfied_since is None:
+                self._heating_satisfied_since = now
+            settling_hours = float(options.get(CONF_INDOOR_SETTLING_HOURS, DEFAULT_INDOOR_SETTLING_HOURS))
+            if now - self._heating_satisfied_since < timedelta(hours=settling_hours):
+                return True
             self._heating_satisfied_since = None
-            if indoor_temp > target_setpoint - start_delta:
-                return False
-        else:
-            self._heating_satisfied_since = None
-
-        decision = decide_heating(
-            outdoor_temp,
-            previous_active,
-            float(options.get(CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD)),
-            float(options.get(CONF_HEATING_OFF_THRESHOLD, DEFAULT_HEATING_OFF_THRESHOLD)),
-        )
-        return decision.active
+            return False
+        self._heating_satisfied_since = None
+        return indoor_temp <= target_setpoint - start_delta
 
     async def _apply_control_states(self, options: dict[str, Any], data: HvacCurveData) -> None:
         """Apply heating and cooling without issuing conflicting commands."""
 
         cooling_entity = options.get(CONF_COOLING_CLIMATE)
+        cooling_command_target = _apply_setpoint_correction(
+            data.cooling_target_setpoint,
+            options.get(CONF_COOLING_SETPOINT_CORRECTION, DEFAULT_COOLING_SETPOINT_CORRECTION),
+        )
         heating_entity = options.get(CONF_HEATING_CLIMATE)
         interlocked = bool(options.get(CONF_OPPOSITE_ENTITY_INTERLOCK, DEFAULT_OPPOSITE_ENTITY_INTERLOCK))
 
@@ -536,24 +481,7 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                     cooling_entity,
                     HVACMode.COOL,
                     True,
-                    data.cooling_target_setpoint,
-                )
-            else:
-                state = self.hass.states.get(cooling_entity)
-                current_mode = (
-                    HVACMode(state.state)
-                    if state and state.state in {HVACMode.COOL, HVACMode.HEAT}
-                    else HVACMode.COOL
-                )
-                await self._apply_climate_control(
-                    cooling_entity,
-                    current_mode,
-                    False,
-                    (
-                        data.heating_target_setpoint
-                        if current_mode == HVACMode.HEAT
-                        else data.cooling_target_setpoint
-                    ),
+                    cooling_command_target,
                 )
             return
 
@@ -565,18 +493,18 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
                 if not await self._async_turn_off_opposite(heating_entity):
                     return
 
-        if cooling_entity and not (interlocked and data.heating_active):
+        if cooling_entity and data.cooling_active:
             await self._apply_climate_control(
                 cooling_entity,
                 HVACMode.COOL,
-                data.cooling_active,
-                data.cooling_target_setpoint,
+                True,
+                cooling_command_target,
             )
-        if heating_entity and not (interlocked and data.cooling_active):
+        if heating_entity and data.heating_active:
             await self._apply_climate_control(
                 heating_entity,
                 HVACMode.HEAT,
-                data.heating_active,
+                True,
                 data.heating_target_setpoint,
             )
 
@@ -615,14 +543,15 @@ class HvacSetpointCoordinator(DataUpdateCoordinator[HvacCurveData]):
             _LOGGER.warning("Skipping %s because it is unavailable", entity_id)
             return
 
-        # An inactive curve session must never power equipment off. If the
-        # linked entity is already in this mode, keep its thermostat supplied
-        # with the current curve target and let the equipment cycle itself.
-        should_set_target = target_setpoint is not None and (active or state.state == hvac_mode)
-        if should_set_target and target_setpoint is not None:
+        # An inactive mode owns neither the climate mode nor its target. This is
+        # especially important for thermostatic radiator valves that normally
+        # report heat mode even while the cooling side of the profile is active.
+        if not active:
+            return
+        if target_setpoint is not None:
             try:
                 supported_target = _supported_target_temperature(state, target_setpoint)
-                if active and state.state != hvac_mode:
+                if state.state != hvac_mode:
                     await self.hass.services.async_call(
                         "climate",
                         SERVICE_SET_HVAC_MODE,
@@ -740,3 +669,11 @@ def _apply_night_offset(setpoint: float, enabled: bool, offset: Any) -> float:
     """Apply a configured night correction while retaining sensor precision."""
 
     return round(setpoint + (float(offset) if enabled else 0.0), 1)
+
+
+def _apply_setpoint_correction(setpoint: float | None, correction: Any) -> float | None:
+    """Add a device-specific correction without changing the comfort target."""
+
+    if setpoint is None:
+        return None
+    return round(setpoint + float(correction), 1)

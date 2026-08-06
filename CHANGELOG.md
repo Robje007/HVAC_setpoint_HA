@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0 - 2026-08-06
+
+- Adds a signed cooling-device setpoint correction. Use `-1.0 °C` when an air conditioner settles 1 °C warmer than requested; heating targets and the displayed comfort target are unaffected.
+- Only sends mode and target commands to the active heating or cooling side, so inactive Tado valves and air conditioners retain their own setpoints.
+- Resolves simultaneous heating and cooling demand to one active building mode, also when separate climate entities are used without the optional power-off interlock.
+- Replaces outdoor start/stop thresholds with automatic mode selection: outdoor temperature shapes the comfort band and indoor temperature chooses heating, neutral or cooling.
+- Removes the four obsolete heating/cooling outdoor-threshold number entities and changeover inputs from the configuration and visual editor.
+- Refreshes the integration branding with circular transparent logo and icon assets.
+
 ## 1.2.1 - 2026-08-05
 
 - Replaces separate heating and cooling profile choices with one coherent building profile.

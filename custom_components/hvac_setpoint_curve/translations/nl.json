@@ -22,18 +22,9 @@
           "preset": "Gebouwprofiel"
         }
       },
-      "thresholds": {
-        "title": "Hysterese-drempels voor buitentemperatuur",
-        "data": {
-          "cooling_on_threshold": "Nieuwe koelcyclus toestaan boven gemiddelde buitentemperatuur",
-          "cooling_off_threshold": "Koelcurvesessie eindigen onder buitentemperatuur als geen binnenwaarde beschikbaar is",
-          "heating_on_threshold": "Nieuwe verwarmingscyclus toestaan onder gemiddelde buitentemperatuur",
-          "heating_off_threshold": "Verwarmingscurvesessie eindigen boven buitentemperatuur als geen binnenwaarde beschikbaar is"
-        }
-      },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "De gemiddelde buitentemperatuur bepaalt of een nieuwe cyclus mag starten. Aparte verwarmings- en koelentiteiten kunnen worden vergrendeld zodat er maar één actief is.",
+        "description": "De buitentemperatuur bepaalt de comfortdoelen; de binnentemperatuur kiest automatisch verwarmen, neutraal of koelen. Aparte entiteiten kunnen optioneel elektrisch worden vergrendeld.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
@@ -47,8 +38,6 @@
         "description": "Voer 3 tot 6 punten in. Elk punt koppelt een buitentemperatuur aan de gewenste koeltemperatuur.",
         "data": {
           "point_count": "Aantal buitentemperatuurpunten",
-          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
-          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
           "heating_setpoint_1": "Punt 1: verwarmen tot",
           "cooling_setpoint_1": "Punt 1: koelen vanaf",
           "heating_setpoint_2": "Punt 2: verwarmen tot",
@@ -80,8 +69,6 @@
         "description": "Voer 3 tot 6 punten in. Elk punt koppelt een buitentemperatuur aan de gewenste verwarmingstemperatuur.",
         "data": {
           "point_count": "Aantal buitentemperatuurpunten",
-          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
-          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
           "heating_setpoint_1": "Punt 1: verwarmen tot",
           "cooling_setpoint_1": "Punt 1: koelen vanaf",
           "heating_setpoint_2": "Punt 2: verwarmen tot",
@@ -113,8 +100,6 @@
         "description": "Stel verwarmen en koelen samen in. De ruimte ertussen is de neutrale zone waarin geen van beide wordt gevraagd.",
         "data": {
           "point_count": "Aantal buitentemperatuurpunten",
-          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
-          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
           "heating_setpoint_1": "Punt 1: verwarmen tot", "cooling_setpoint_1": "Punt 1: koelen vanaf",
           "heating_setpoint_2": "Punt 2: verwarmen tot", "cooling_setpoint_2": "Punt 2: koelen vanaf",
           "heating_setpoint_3": "Punt 3: verwarmen tot", "cooling_setpoint_3": "Punt 3: koelen vanaf",
@@ -140,10 +125,7 @@
       "missing_control_or_sensor_only": "Kies koelen, verwarmen, of alleen-sensor-modus. Alleen-sensor maakt entiteiten voor automatiseringen maar bedient geen HVAC.",
       "invalid_curve": "Curvepunten moeten volledig zijn en unieke buitentemperaturen hebben.",
       "unsupported_cooling_mode": "Deze climate-entiteit ondersteunt de koelmodus niet.",
-      "unsupported_heating_mode": "Deze climate-entiteit ondersteunt de verwarmingsmodus niet.",
-      "invalid_cooling_hysteresis": "De temperatuur voor koelen aan moet hoger zijn dan die voor koelen uit.",
-      "invalid_heating_hysteresis": "De temperatuur voor verwarmen uit moet hoger zijn dan die voor verwarmen aan.",
-      "overlapping_heating_cooling": "De temperatuur voor verwarmen uit moet lager zijn dan die voor koelen aan."
+      "unsupported_heating_mode": "Deze climate-entiteit ondersteunt de verwarmingsmodus niet."
     },
     "abort": {
       "already_configured": "Deze curvenaam is al ingesteld."
@@ -156,15 +138,13 @@
         "menu_options": {
           "linked_entities": "Gekoppelde apparaten en sensoren",
           "preset": "Gebouwprofiel",
-          "custom_curve": "Eigen comfortband en omschakeling",
-          "thresholds": "Buitentemperaturen voor starten en terugval",
+          "custom_curve": "Eigen automatische comfortband",
           "control_behavior": "Geavanceerd gedrag"
         },
         "menu_option_descriptions": {
           "linked_entities": "Kies climate-apparaten en sensoren. De binnentemperatuur wordt automatisch uit elke climate-entiteit gelezen, tenzij je een afwijkende sensor kiest.",
           "preset": "Kies één samenhangend Comfort- of Eco-profiel voor de hele zone.",
-          "custom_curve": "Pas verwarmen, de neutrale zone, koelen en de buitengrenzen samen aan.",
-          "thresholds": "Bepaal wanneer verwarmen en koelen mogen starten op basis van de buitentemperatuur.",
+          "custom_curve": "Stel per buitentemperatuur de automatische verwarmings- en koelgrenzen in.",
           "control_behavior": "Demp buitenschommelingen en stel in wanneer de binnenvraag een cyclus start en stopt."
         }
       },
@@ -182,18 +162,16 @@
       },
       "preset": {
         "title": "Gebouwprofiel",
-        "description": "Eén profiel stelt verwarmen, de neutrale zone, koelen en de buitengrenzen samen in.",
+        "description": "Eén profiel stelt de automatische comfortband voor verwarmen, neutraal en koelen in.",
         "data": {
           "preset": "Gebouwprofiel"
         }
       },
       "custom_curve": {
         "title": "Eigen comfortband",
-        "description": "Stel per buitentemperatuur in tot waar wordt verwarmd en vanaf wanneer wordt gekoeld. Verwarmen moet lager blijven dan koelen. Kies daarna de buitengrenzen.",
+        "description": "Stel per buitentemperatuur de verwarmings- en koelgrens binnen in. De regelaar kiest automatisch een modus; verwarmen moet onder koelen blijven.",
         "data": {
           "point_count": "Aantal buitentemperatuurpunten",
-          "heating_on_threshold": "Verwarming toegestaan onder deze buitentemperatuur",
-          "cooling_on_threshold": "Koeling toegestaan boven deze buitentemperatuur",
           "heating_setpoint_1": "Punt 1: verwarmen tot", "cooling_setpoint_1": "Punt 1: koelen vanaf",
           "heating_setpoint_2": "Punt 2: verwarmen tot", "cooling_setpoint_2": "Punt 2: koelen vanaf",
           "heating_setpoint_3": "Punt 3: verwarmen tot", "cooling_setpoint_3": "Punt 3: koelen vanaf",
@@ -252,18 +230,9 @@
           "setpoint_6": "Punt 6: gewenste verwarmingstemperatuur"
         }
       },
-      "thresholds": {
-        "title": "Buitentemperatuur-drempels",
-        "data": {
-          "cooling_on_threshold": "Nieuwe koelcyclus toestaan boven gemiddelde buitentemperatuur",
-          "cooling_off_threshold": "Koelcurvesessie eindigen onder buitentemperatuur als geen binnenwaarde beschikbaar is",
-          "heating_on_threshold": "Nieuwe verwarmingscyclus toestaan onder gemiddelde buitentemperatuur",
-          "heating_off_threshold": "Verwarmingscurvesessie eindigen boven buitentemperatuur als geen binnenwaarde beschikbaar is"
-        }
-      },
       "control_behavior": {
         "title": "Thermische traagheid en binnenvraag",
-        "description": "Een climate-modus blijft beschikbaar voor de eigen thermostaat. Schakel de vergrendeling alleen in bij twee aparte entiteiten die nooit tegelijk mogen verwarmen en koelen.",
+        "description": "De buitentemperatuur vormt de doelen en de binnenvraag kiest automatisch verwarmen of koelen. Schakel de vergrendeling alleen in als de inactieve aparte entiteit ook uitgezet moet worden.",
         "data": {
           "outdoor_averaging_hours": "Middelingsperiode buitentemperatuur (0 schakelt middeling uit)",
           "indoor_start_delta": "Benodigd verschil tussen binnen en doel om te starten",
@@ -277,10 +246,7 @@
       "missing_control_or_sensor_only": "Kies koelen, verwarmen, of alleen-sensor-modus. Alleen-sensor maakt entiteiten voor automatiseringen maar bedient geen HVAC.",
       "invalid_curve": "Curvepunten moeten volledig zijn en unieke buitentemperaturen hebben.",
       "unsupported_cooling_mode": "Deze climate-entiteit ondersteunt de koelmodus niet.",
-      "unsupported_heating_mode": "Deze climate-entiteit ondersteunt de verwarmingsmodus niet.",
-      "invalid_cooling_hysteresis": "De temperatuur voor koelen aan moet hoger zijn dan die voor koelen uit.",
-      "invalid_heating_hysteresis": "De temperatuur voor verwarmen uit moet hoger zijn dan die voor verwarmen aan.",
-      "overlapping_heating_cooling": "De temperatuur voor verwarmen uit moet lager zijn dan die voor koelen aan."
+      "unsupported_heating_mode": "Deze climate-entiteit ondersteunt de verwarmingsmodus niet."
     }
   },
   "entity": {
@@ -298,23 +264,14 @@
       }
     },
     "number": {
-      "cooling_on_threshold": {
-        "name": "Koeling toegestaan boven buitentemperatuur"
-      },
-      "cooling_off_threshold": {
-        "name": "Koelcurvesessie eindigt onder"
-      },
-      "heating_on_threshold": {
-        "name": "Verwarming toegestaan onder buitentemperatuur"
-      },
-      "heating_off_threshold": {
-        "name": "Verwarmingscurvesessie eindigt boven"
-      },
       "cooling_night_offset": {
         "name": "Nachtmodus: koelen hoger met"
       },
       "heating_night_offset": {
         "name": "Nachtmodus: verwarmen lager met"
+      },
+      "cooling_setpoint_correction": {
+        "name": "Correctie koelsetpoint airco"
       }
     },
     "select": {

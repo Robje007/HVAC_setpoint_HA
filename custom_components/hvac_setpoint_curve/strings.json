@@ -22,18 +22,9 @@
           "preset": "Building profile"
         }
       },
-      "thresholds": {
-        "title": "Outdoor temperature hysteresis thresholds",
-        "data": {
-          "cooling_on_threshold": "Allow a new cooling cycle above averaged outdoor temperature",
-          "cooling_off_threshold": "End cooling curve session below outdoor temperature when no indoor value is available",
-          "heating_on_threshold": "Allow a new heating cycle below averaged outdoor temperature",
-          "heating_off_threshold": "End heating curve session above outdoor temperature when no indoor value is available"
-        }
-      },
       "control_behavior": {
         "title": "Thermal inertia and indoor demand",
-        "description": "The averaged outdoor temperature determines when a new cycle may start. Separate heating and cooling entities can optionally be interlocked so only one can run.",
+        "description": "Outdoor temperature determines the comfort targets; indoor temperature automatically selects heating, neutral or cooling. Separate entities can optionally be power-interlocked.",
         "data": {
           "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
           "indoor_start_delta": "Indoor difference from target required to start",
@@ -47,8 +38,6 @@
         "description": "Enter 3 to 6 points. Each point maps an outdoor temperature to the cooling target temperature.",
         "data": {
           "point_count": "Number of outdoor points",
-          "heating_on_threshold": "Heating allowed below this outdoor temperature",
-          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
           "heating_setpoint_1": "Point 1: heat up to",
           "cooling_setpoint_1": "Point 1: cool from",
           "heating_setpoint_2": "Point 2: heat up to",
@@ -80,8 +69,6 @@
         "description": "Enter 3 to 6 points. Each point maps an outdoor temperature to the heating target temperature.",
         "data": {
           "point_count": "Number of outdoor points",
-          "heating_on_threshold": "Heating allowed below this outdoor temperature",
-          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
           "heating_setpoint_1": "Point 1: heat up to",
           "cooling_setpoint_1": "Point 1: cool from",
           "heating_setpoint_2": "Point 2: heat up to",
@@ -113,8 +100,6 @@
         "description": "Set heating and cooling limits together. The space between them is the neutral zone where neither is requested.",
         "data": {
           "point_count": "Number of outdoor points",
-          "heating_on_threshold": "Heating allowed below this outdoor temperature",
-          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
           "heating_setpoint_1": "Point 1: heat up to", "cooling_setpoint_1": "Point 1: cool from",
           "heating_setpoint_2": "Point 2: heat up to", "cooling_setpoint_2": "Point 2: cool from",
           "heating_setpoint_3": "Point 3: heat up to", "cooling_setpoint_3": "Point 3: cool from",
@@ -140,10 +125,7 @@
       "missing_control_or_sensor_only": "Choose cooling, heating, or sensor-only mode. Sensor-only creates entities for automations but does not control HVAC.",
       "invalid_curve": "Curve points must be complete and have unique outdoor temperatures.",
       "unsupported_cooling_mode": "This climate entity does not support cooling mode.",
-      "unsupported_heating_mode": "This climate entity does not support heating mode.",
-      "invalid_cooling_hysteresis": "Cooling on temperature must be higher than cooling off temperature.",
-      "invalid_heating_hysteresis": "Heating off temperature must be higher than heating on temperature.",
-      "overlapping_heating_cooling": "Heating off temperature must be lower than cooling on temperature."
+      "unsupported_heating_mode": "This climate entity does not support heating mode."
     },
     "abort": {
       "already_configured": "This curve name is already configured."
@@ -156,15 +138,13 @@
         "menu_options": {
           "linked_entities": "Linked entities and sensors",
           "preset": "Building profile",
-          "custom_curve": "Custom comfort band and changeover",
-          "thresholds": "Outdoor start and fallback temperatures",
+          "custom_curve": "Custom automatic comfort band",
           "control_behavior": "Advanced behavior"
         },
         "menu_option_descriptions": {
           "linked_entities": "Choose climate entities and sensors. Indoor temperature is read automatically from each climate entity unless an override sensor is selected.",
           "preset": "Choose one coherent Comfort or Eco profile for the complete zone.",
-          "custom_curve": "Edit heating, the neutral zone, cooling and outdoor changeover limits together.",
-          "thresholds": "Choose when heating and cooling may start based on outdoor temperature.",
+          "custom_curve": "Set the automatic heating and cooling limits for each outdoor temperature.",
           "control_behavior": "Smooth outdoor changes and configure when indoor demand starts and stops a cycle."
         }
       },
@@ -182,18 +162,16 @@
       },
       "preset": {
         "title": "Building profile",
-        "description": "One profile configures heating, the neutral zone, cooling and outdoor changeover together.",
+        "description": "One profile configures the automatic heating, neutral and cooling comfort band.",
         "data": {
           "preset": "Building profile"
         }
       },
       "custom_curve": {
         "title": "Custom comfort band",
-        "description": "For each outdoor temperature, set when heating stops and cooling starts. Heating must remain below cooling. Then choose the outdoor changeover limits.",
+        "description": "For each outdoor temperature, set the indoor heating and cooling limits. The controller automatically chooses a mode; heating must remain below cooling.",
         "data": {
           "point_count": "Number of outdoor points",
-          "heating_on_threshold": "Heating allowed below this outdoor temperature",
-          "cooling_on_threshold": "Cooling allowed above this outdoor temperature",
           "heating_setpoint_1": "Point 1: heat up to", "cooling_setpoint_1": "Point 1: cool from",
           "heating_setpoint_2": "Point 2: heat up to", "cooling_setpoint_2": "Point 2: cool from",
           "heating_setpoint_3": "Point 3: heat up to", "cooling_setpoint_3": "Point 3: cool from",
@@ -252,18 +230,9 @@
           "setpoint_6": "Point 6 heating setpoint"
         }
       },
-      "thresholds": {
-        "title": "Outdoor temperature thresholds",
-        "data": {
-          "cooling_on_threshold": "Allow a new cooling cycle above averaged outdoor temperature",
-          "cooling_off_threshold": "End cooling curve session below outdoor temperature when no indoor value is available",
-          "heating_on_threshold": "Allow a new heating cycle below averaged outdoor temperature",
-          "heating_off_threshold": "End heating curve session above outdoor temperature when no indoor value is available"
-        }
-      },
       "control_behavior": {
         "title": "Thermal inertia and indoor demand",
-        "description": "A climate mode remains available for its thermostat. Enable the interlock only for two separate entities that must never heat and cool together.",
+        "description": "Outdoor temperature shapes the targets and indoor demand automatically selects heating or cooling. Enable the interlock only when the inactive separate entity must also be powered off.",
         "data": {
           "outdoor_averaging_hours": "Outdoor-temperature averaging window (0 disables averaging)",
           "indoor_start_delta": "Indoor difference from target required to start",
@@ -277,10 +246,7 @@
       "missing_control_or_sensor_only": "Choose cooling, heating, or sensor-only mode. Sensor-only creates entities for automations but does not control HVAC.",
       "invalid_curve": "Curve points must be complete and have unique outdoor temperatures.",
       "unsupported_cooling_mode": "This climate entity does not support cooling mode.",
-      "unsupported_heating_mode": "This climate entity does not support heating mode.",
-      "invalid_cooling_hysteresis": "Cooling on temperature must be higher than cooling off temperature.",
-      "invalid_heating_hysteresis": "Heating off temperature must be higher than heating on temperature.",
-      "overlapping_heating_cooling": "Heating off temperature must be lower than cooling on temperature."
+      "unsupported_heating_mode": "This climate entity does not support heating mode."
     }
   },
   "entity": {
@@ -298,23 +264,14 @@
       }
     },
     "number": {
-      "cooling_on_threshold": {
-        "name": "Cooling allowed above outdoor"
-      },
-      "cooling_off_threshold": {
-        "name": "Cooling curve session ends below"
-      },
-      "heating_on_threshold": {
-        "name": "Heating allowed below outdoor"
-      },
-      "heating_off_threshold": {
-        "name": "Heating curve session ends above"
-      },
       "cooling_night_offset": {
         "name": "Night mode: cool higher by"
       },
       "heating_night_offset": {
         "name": "Night mode: heat lower by"
+      },
+      "cooling_setpoint_correction": {
+        "name": "Cooling device setpoint correction"
       }
     },
     "select": {

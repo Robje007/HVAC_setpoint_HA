@@ -17,8 +17,7 @@ from custom_components.hvac_setpoint_curve.const import (
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
     CONF_COOLING_NIGHT_OFFSET,
-    CONF_COOLING_OFF_THRESHOLD,
-    CONF_COOLING_ON_THRESHOLD,
+    CONF_COOLING_SETPOINT_CORRECTION,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
     CONF_HEATING_NIGHT_OFFSET,
@@ -111,7 +110,7 @@ async def test_interlock_turns_off_separate_cooling_before_heating(hass) -> None
 
 
 async def test_disabled_interlock_never_turns_off_separate_entity(hass) -> None:
-    """Existing installations retain setpoint-only behavior unless interlock is enabled."""
+    """Without interlock, the inactive opposite entity remains completely untouched."""
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -137,6 +136,36 @@ async def test_disabled_interlock_never_turns_off_separate_entity(hass) -> None:
     await hass.async_block_till_done()
 
     assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
+    assert all(call.data["entity_id"] == "climate.heater" for call in calls)
+
+
+async def test_heating_and_cooling_are_mutually_exclusive_for_separate_entities(hass) -> None:
+    """Simultaneous demand is resolved even when power-off interlock is disabled."""
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: "climate.cooler",
+            CONF_HEATING_CLIMATE: "climate.heater",
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("climate.cooler", HVACMode.COOL, {"temperature": 24.0})
+    hass.states.async_set("climate.heater", HVACMode.HEAT, {"temperature": 20.0})
+    data = HvacCurveData(
+        cooling_active=True,
+        heating_active=True,
+        cooling_target_setpoint=24.0,
+        heating_target_setpoint=20.0,
+        cooling_indoor_temperature_used=25.0,
+        heating_indoor_temperature_used=19.8,
+    )
+
+    coordinator._resolve_mode_conflict(coordinator.merged_options, data)
+
+    assert data.cooling_active is True
+    assert data.heating_active is False
 
 
 @pytest.mark.parametrize(
@@ -193,8 +222,8 @@ async def test_target_is_clamped_to_climate_temperature_range(hass) -> None:
     assert calls[-1].data["temperature"] == 22.0
 
 
-async def test_inactive_session_updates_target_without_turning_climate_off(hass) -> None:
-    """An inactive curve session leaves mode control to the device thermostat."""
+async def test_inactive_session_does_not_touch_climate(hass) -> None:
+    """An inactive mode neither changes the climate mode nor its target."""
 
     entity_id = "climate.test_unit"
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_COOLING_CLIMATE: entity_id})
@@ -207,10 +236,7 @@ async def test_inactive_session_updates_target_without_turning_climate_off(hass)
     await coordinator._apply_climate_control(entity_id, HVACMode.COOL, False, 24.0)
     await hass.async_block_till_done()
 
-    assert len(calls) == 1
-    assert calls[0].service == "set_temperature"
-    assert calls[0].data["temperature"] == 24.0
-    assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
+    assert calls == []
 
 
 async def test_disabled_controller_calculates_target_without_controlling_hvac(hass) -> None:
@@ -310,8 +336,6 @@ async def test_cooling_waits_for_stability_and_resets_timer_after_rebound(hass, 
                 {"outdoor_temp": 15.0, "setpoint": 22.0},
                 {"outdoor_temp": 32.0, "setpoint": 22.0},
             ],
-            CONF_COOLING_OFF_THRESHOLD: 16.0,
-            CONF_COOLING_ON_THRESHOLD: 17.0,
             CONF_INDOOR_SETTLING_HOURS: 2.0,
             CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
             CONF_OUTDOOR_AVERAGING_HOURS: 0,
@@ -423,8 +447,8 @@ async def test_heating_thermostat_retains_mode_when_room_is_above_target(hass) -
     assert all(call.data.get("hvac_mode") != HVACMode.OFF for call in calls)
 
 
-async def test_cooling_start_requires_outdoor_permission_and_indoor_demand(hass) -> None:
-    """A new cooling cycle starts only when both outdoor and indoor conditions require it."""
+async def test_cooling_start_is_driven_by_indoor_demand_even_when_outdoor_is_cold(hass) -> None:
+    """Outdoor temperature shapes the target but never blocks valid cooling demand."""
 
     entity_id = "climate.air_conditioner"
     entry = MockConfigEntry(
@@ -541,6 +565,34 @@ async def test_night_mode_applies_independent_offsets_after_curve_calculation(ha
     assert data.heating_target_setpoint == 20.5
 
 
+async def test_cooling_setpoint_correction_only_changes_device_command(hass) -> None:
+    """A cooling device correction leaves the calculated comfort target unchanged."""
+
+    entity_id = "climate.air_conditioner"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COOLING_CLIMATE: entity_id,
+            CONF_COOLING_SETPOINT_CORRECTION: -1.0,
+            CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
+            CONF_OUTDOOR_AVERAGING_HOURS: 0,
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("sensor.outdoor_temperature", 10.0)
+    hass.states.async_set(entity_id, HVACMode.OFF, {"temperature": 20.0, "current_temperature": 27.0})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    data = await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert data.cooling_target_setpoint == 24.8
+    temperature_calls = [call for call in calls if call.service == "set_temperature"]
+    assert temperature_calls[-1].data["temperature"] == 23.8
+
+
 async def test_shared_heat_pump_keeps_current_mode_when_sessions_overlap(hass) -> None:
     """A shared unit never receives conflicting heat and cool decisions."""
 
@@ -577,6 +629,30 @@ async def test_shared_heat_pump_keeps_current_mode_when_sessions_overlap(hass) -
     await hass.async_block_till_done()
 
     assert data.cooling_active is True
+
+
+async def test_heating_start_is_driven_by_indoor_demand_even_when_outdoor_is_warm(hass) -> None:
+    """Outdoor temperature shapes the target but never blocks valid heating demand."""
+
+    entity_id = "climate.heater"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HEATING_CLIMATE: entity_id,
+            CONF_OUTDOOR_TEMP_SENSOR: "sensor.outdoor_temperature",
+            CONF_OUTDOOR_AVERAGING_HOURS: 0,
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = HvacSetpointCoordinator(hass, entry)
+    hass.states.async_set("sensor.outdoor_temperature", 30.0)
+    hass.states.async_set(entity_id, HVACMode.OFF, {"temperature": 18.0, "current_temperature": 16.0})
+
+    calls = []
+    _register_climate_services(hass, calls)
+    data = await coordinator._async_update_data()
+
+    assert data.heating_active is True
     assert data.heating_active is False
     assert all(call.data.get("hvac_mode") != HVACMode.HEAT for call in calls)
 

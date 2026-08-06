@@ -30,17 +30,13 @@ from .const import (
     ATTR_OUTDOOR_TEMPERATURE_USED,
     CONF_COOLING_CLIMATE,
     CONF_COOLING_CURVE_POINTS,
-    CONF_COOLING_ON_THRESHOLD,
     CONF_CURVE_POINTS,
     CONF_HEATING_CLIMATE,
     CONF_HEATING_CURVE_POINTS,
-    CONF_HEATING_ON_THRESHOLD,
     CONF_SENSOR_ONLY,
     DEFAULT_COOLING_CURVE_POINTS,
-    DEFAULT_COOLING_ON_THRESHOLD,
     DEFAULT_CURVE_POINTS,
     DEFAULT_HEATING_CURVE_POINTS,
-    DEFAULT_HEATING_ON_THRESHOLD,
     DOMAIN,
 )
 from .entity import HvacSetpointEntity
@@ -103,8 +99,6 @@ class TargetSetpointSensor(HvacSetpointEntity, SensorEntity):
             ATTR_CURVE_POINTS: options.get(CONF_CURVE_POINTS, DEFAULT_CURVE_POINTS),
             ATTR_COOLING_CURVE_POINTS: options.get(CONF_COOLING_CURVE_POINTS, DEFAULT_COOLING_CURVE_POINTS),
             ATTR_HEATING_CURVE_POINTS: options.get(CONF_HEATING_CURVE_POINTS, DEFAULT_HEATING_CURVE_POINTS),
-            "heating_changeover": options.get(CONF_HEATING_ON_THRESHOLD, DEFAULT_HEATING_ON_THRESHOLD),
-            "cooling_changeover": options.get(CONF_COOLING_ON_THRESHOLD, DEFAULT_COOLING_ON_THRESHOLD),
             "cooling_enabled": bool(options.get(CONF_COOLING_CLIMATE) or options.get(CONF_SENSOR_ONLY)),
             "heating_enabled": bool(options.get(CONF_HEATING_CLIMATE) or options.get(CONF_SENSOR_ONLY)),
         }

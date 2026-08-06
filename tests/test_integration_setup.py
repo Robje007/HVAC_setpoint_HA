@@ -135,22 +135,6 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
     assert entry.options[CONF_COOLING_NIGHT_OFFSET] == 2.0
     assert entry.options[CONF_HEATING_NIGHT_OFFSET] == -2.5
 
-    heating_changeover_id = entity_registry.async_get_entity_id(
-        "number",
-        DOMAIN,
-        f"{entry.entry_id}_heating_on_threshold",
-    )
-    assert heating_changeover_id is not None
-    await hass.services.async_call(
-        "number",
-        "set_value",
-        {"entity_id": heating_changeover_id, "value": 17.0},
-        blocking=True,
-    )
-    await hass.async_block_till_done()
-    assert entry.options["heating_on_threshold"] == 17.0
-    assert entry.options["heating_off_threshold"] == 18.5
-
     building_profile_id = entity_registry.async_get_entity_id(
         "select",
         DOMAIN,
@@ -185,13 +169,9 @@ async def test_config_entry_loads_entities_and_service(hass) -> None:
                 {"outdoor_temp": 15, "setpoint": 24},
                 {"outdoor_temp": 30, "setpoint": 25},
             ],
-            "heating_changeover": 18,
-            "cooling_changeover": 22,
         },
         blocking=True,
     )
     await hass.async_block_till_done()
 
     assert entry.options["preset"] == "custom"
-    assert entry.options["heating_on_threshold"] == 18
-    assert entry.options["cooling_on_threshold"] == 22

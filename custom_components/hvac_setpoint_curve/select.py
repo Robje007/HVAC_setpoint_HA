@@ -9,18 +9,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import HvacSetpointConfigEntry
 from .const import (
     CONF_COOLING_CURVE_POINTS,
-    CONF_COOLING_OFF_THRESHOLD,
-    CONF_COOLING_ON_THRESHOLD,
     CONF_COOLING_PRESET,
     CONF_HEATING_CURVE_POINTS,
-    CONF_HEATING_OFF_THRESHOLD,
-    CONF_HEATING_ON_THRESHOLD,
     CONF_HEATING_PRESET,
     CONF_PRESET,
     DEFAULT_PRESET,
     DOMAIN,
     PRESET_CUSTOM,
-    preset_changeovers,
     preset_curve,
     preset_name,
 )
@@ -67,7 +62,7 @@ class BuildingProfileSelect(HvacSetpointEntity, SelectEntity):
         return self._names.get(preset, self._custom_name)
 
     async def async_select_option(self, option: str) -> None:
-        """Apply both curves and both outdoor changeover limits."""
+        """Apply both comfort curves."""
 
         preset = next((key for key, name in self._names.items() if name == option), PRESET_CUSTOM)
         new_options = {
@@ -77,15 +72,10 @@ class BuildingProfileSelect(HvacSetpointEntity, SelectEntity):
             CONF_HEATING_PRESET: preset,
         }
         if preset != PRESET_CUSTOM:
-            heating_changeover, cooling_changeover = preset_changeovers(preset)
             new_options.update(
                 {
                     CONF_COOLING_CURVE_POINTS: preset_curve(preset, "cooling"),
                     CONF_HEATING_CURVE_POINTS: preset_curve(preset, "heating"),
-                    CONF_HEATING_ON_THRESHOLD: heating_changeover,
-                    CONF_HEATING_OFF_THRESHOLD: heating_changeover + 1.5,
-                    CONF_COOLING_ON_THRESHOLD: cooling_changeover,
-                    CONF_COOLING_OFF_THRESHOLD: cooling_changeover - 1.5,
                 }
             )
         self.coordinator.hass.config_entries.async_update_entry(

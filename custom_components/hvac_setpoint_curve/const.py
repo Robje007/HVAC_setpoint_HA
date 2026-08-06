@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "hvac_setpoint_curve"
-VERSION: Final = "1.2.1"
+VERSION: Final = "2.0.0"
 
 PLATFORMS: Final = ["sensor", "binary_sensor", "number", "select", "switch"]
 
@@ -26,12 +26,14 @@ CONF_CONTROLLER_ENABLED: Final = "controller_enabled"
 CONF_NIGHT_MODE: Final = "night_mode"
 CONF_COOLING_NIGHT_OFFSET: Final = "cooling_night_offset"
 CONF_HEATING_NIGHT_OFFSET: Final = "heating_night_offset"
+CONF_COOLING_SETPOINT_CORRECTION: Final = "cooling_setpoint_correction"
 CONF_OPPOSITE_ENTITY_INTERLOCK: Final = "opposite_entity_interlock"
 
 DEFAULT_CONTROLLER_ENABLED: Final = True
 DEFAULT_NIGHT_MODE: Final = False
 DEFAULT_COOLING_NIGHT_OFFSET: Final = 1.0
 DEFAULT_HEATING_NIGHT_OFFSET: Final = -1.5
+DEFAULT_COOLING_SETPOINT_CORRECTION: Final = 0.0
 DEFAULT_OPPOSITE_ENTITY_INTERLOCK: Final = False
 CONF_OUTDOOR_AVERAGING_HOURS: Final = "outdoor_averaging_hours"
 CONF_INDOOR_START_DELTA: Final = "indoor_start_delta"

@@ -2,4 +2,4 @@
 
 Weather-compensated HVAC setpoint curves for Home Assistant.
 
-This custom integration computes a target setpoint from outdoor temperature, optionally nudged by humidity, and can control linked heating and cooling climate entities with editable hysteresis thresholds.
+This custom integration calculates a weather-compensated heating and cooling comfort band, then uses indoor temperature to select heating, neutral or cooling automatically. It can expose the result for automations or directly control linked climate entities.
