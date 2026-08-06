@@ -46,16 +46,7 @@ Each config entry creates:
 - `number.<name>_cooling_setpoint_correction` (when cooling control is linked)
 - `select.<name>_building_profile`
 
-## Brand Icon
 
-Home Assistant 2026.3 and newer can show local custom integration brand assets from:
-
-```text
-custom_components/hvac_setpoint_curve/brand/icon.png
-custom_components/hvac_setpoint_curve/brand/logo.png
-```
-
-After copying or updating these files, restart Home Assistant and hard-refresh the browser if the old icon is still cached.
 
 The target setpoint sensor includes these attributes:
 
