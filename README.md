@@ -1,14 +1,5 @@
 # HVAC Setpoint Curve
 
-Air conditioners with a consistent setpoint deviation can be calibrated with the
-`Cooling device setpoint correction` number entity. The correction is added only
-to commands sent in cooling mode; for example, use `-1.0 °C` when the unit settles
-1 °C warmer than requested. It does not alter the curve target or heating behavior.
-
-Mode selection is automatic. Outdoor temperature is used to calculate the heating
-and cooling comfort limits, while indoor temperature selects heating, the neutral
-zone, or cooling. There are no separate outdoor start/stop thresholds.
-
 <img src="assets/logo.png" alt="HVAC Setpoint Curve logo" width="180">
 
 [![Support on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/robje007)
@@ -189,6 +180,10 @@ Behavior:
 
 The controller deliberately separates weather compensation from actual room demand:
 
+Mode selection is automatic. Outdoor temperature is used to calculate the heating
+and cooling comfort limits, while indoor temperature selects heating, the neutral
+zone, or cooling. There are no separate outdoor start/stop thresholds.
+
 - A time-weighted outdoor-temperature average calculates both comfort limits from the curves. The default window is 3 hours; set it to 0 to use the current outdoor value directly.
 - Indoor temperature automatically chooses heating below the red limit, neutral between both limits, or cooling above the blue limit.
 - When cooling demand starts, the configured cooling entity is automatically set to `cool` before the calculated target temperature is sent. Heating demand uses the same sequence with `heat`.
@@ -216,6 +211,11 @@ The indoor start difference, target tolerance and stabilization time are shared 
 Unavailable controlled climate entities are skipped for that update cycle and logged. If no valid outdoor temperature is available, linked equipment is left unchanged.
 
 Before a target is sent, it is rounded to the linked climate entity's advertised `target_temp_step` (for example 0.5 or 1.0 C) and limited to its `min_temp` and `max_temp`. This applies independently to both heating and cooling entities. The target sensor continues to show the curve calculation at 0.1 C resolution.
+
+Air conditioners with a consistent setpoint deviation can be calibrated with the
+`Cooling device setpoint correction` number entity. The correction is added only
+to commands sent in cooling mode; for example, use `-1.0 °C` when the unit settles
+1 °C warmer than requested. It does not alter the curve target or heating behavior.
 
 Use the **Controller enabled** switch to pause or resume automatic HVAC control. Turning it off immediately stops this integration from sending mode and temperature commands and resets its heating/cooling active sensors, but deliberately leaves the linked HVAC equipment unchanged so it can be controlled manually. Curve and target-temperature calculations remain available, and the switch state persists across restarts.
 
